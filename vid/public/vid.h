@@ -10,6 +10,12 @@ typedef enum {
 template<uint32_t Namespace>
 class Vid : public util::Object<56, true> {
  public:
+    struct Hash {
+        size_t operator ()(Vid vid) const {
+            return std::hash<size_t>()(*vid);
+        } 
+    };
+
     typedef util::Object<56, true> Base;
     Vid() {}
     Vid(const char* s, bool force=false);
@@ -25,6 +31,7 @@ class Vid : public util::Object<56, true> {
     bool operator !=(Vid rhs) const { return this->Base::operator!=(rhs); }
     bool valid() const { return this->Base::valid(); }
     bool operator !() const { return this->Base::operator!(); }
+    bool operator <(Vid rhs) const { return this->Base::operator<(rhs); }
 
     static void predef(const std::vector<std::pair<int, std::string> >& pd);
 };

@@ -13,6 +13,11 @@ void yyerror(const char* s);
             (Dst)[yyi] = (Src)[yyi];            \
         }                                       \
     } while (0);
+using Module = netlist::Module<netlist::NL_DEFAULT>;
+using Port = netlist::Port<netlist::NL_DEFAULT>;
+
+static std::vector<Port*> gPorts;
+static Port::Direction gDirection = Port::kPortInput;
 %}
 
 %union yyu {
@@ -52,10 +57,11 @@ modules
 
 module
     : '(' T_MODULE T_ID module_items ')' {
-        netlist::Module<netlist::NL_DEFAULT>* module =
-            new netlist::Module<netlist::NL_DEFAULT>($3);
-        printf("module %s\n", $3.str().c_str());
-        (void) module;
+        Module* module = new Module($3);
+        for (Port* port : gPorts) {
+            module->addPort(port);
+        }
+        gPorts.clear();
     }
     ;
 
@@ -73,14 +79,21 @@ module_item
     ;
 
 direction 
-    : T_INPUT
-    | T_OUTPUT
-    | T_INOUT
+    : T_INPUT {
+        gDirection = Port::kPortInput;
+    }
+    | T_OUTPUT {
+        gDirection = Port::kPortOutput;
+    }
+    | T_INOUT {
+        gDirection = Port::kPortInout;
+    }
     ;
 
 port
     : '(' T_PORT direction T_ID ')' {
-        printf("port %s\n", $4.str().c_str());
+        Port* port = new Port($4, gDirection, nullptr);
+        gPorts.push_back(port);
     }
     ;
 

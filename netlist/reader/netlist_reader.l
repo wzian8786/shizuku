@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "vid.h"
 #include "netlist_reader_def.h"
+#include "szk_log.h"
 #define YY_NO_UNPUT
 #define YY_NO_INPUT
 typedef vid::VID VID;
@@ -41,5 +42,5 @@ NUMBER      [1-9][0-9]*
 {NEWLINE}   { ; }
 "("         { return '('; }
 ")"         { return ')'; }
-.           { fprintf(stderr, "oops! syntax error. %s\n", yytext); }
+.           { util::Logger::fatal("Oops, syntax error."); }
 
