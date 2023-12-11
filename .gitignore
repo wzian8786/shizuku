@@ -1,0 +1,6 @@
+*.o
+cscope.*
+*.swp
+build
+release
+install
