@@ -1,31 +1,14 @@
 #include "nl_datatype_db.h"
 namespace netlist {
-DataTypeDB DataTypeDB::gSingleton;
-const DataType* DataTypeDB::getScalar2S() {
-    if (!_s2s) {
-        Scalar2S s;
-        _s2s = persist(&s);
+const DataType* DataTypeDB::getTypeScalar() {
+    if (!_scalar) {
+        Scalar s;
+        _scalar = persist(&s);
     }
-    return _s2s;
+    return _scalar;
 }
 
-const DataType* DataTypeDB::getScalar4S() {
-    if (!_s4s) {
-        Scalar4S s;
-        _s4s = persist(&s);
-    }
-    return _s4s;
-}
-
-const DataType* DataTypeDB::getScalarStr() {
-    if (!_sstr) {
-        ScalarStr s;
-        _sstr = persist(&s);
-    }
-    return _sstr;
-}
-
-const DataType* DataTypeDB::getReal() {
+const DataType* DataTypeDB::getTypeReal() {
     if (!_real) {
         Real s;
         _real = persist(&s);
@@ -41,14 +24,8 @@ const DataType* DataTypeDB::persist(DataType* dt) {
 
     DataType* toinsert = nullptr;
     switch (dt->getClassID()) {
-    case kDtScalar2S:
-        toinsert = new Scalar2S();
-        break;
-    case kDtScalar4S:
-        toinsert = new Scalar4S();
-        break;
-    case kDtScalarStr:
-        toinsert = new ScalarStr();
+    case kDtScalar:
+        toinsert = new Scalar();
         break;
     case kDtReal:
         toinsert = new Real();

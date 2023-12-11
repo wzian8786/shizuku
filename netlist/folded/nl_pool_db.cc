@@ -9,14 +9,8 @@ PoolDB<Namespace> __attribute__((init_priority(102))) PoolDB<Namespace>::gSingle
 
 template <uint32_t Namespace>
 PoolDB<Namespace>::~PoolDB() {
-    util::foreach<PortPool>([](Port<Namespace>& port, size_t i) {
-        if (port.valid()) {
-            port.~Port();
-        }
-    });
-
     util::foreach<ModulePool>([](Module<Namespace>& mod, size_t i) {
-        if (mod.valid()) {
+        if (mod) {
             mod.~Module();
         }
     }); 

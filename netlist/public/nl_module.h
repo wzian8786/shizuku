@@ -14,20 +14,29 @@ class Port : public Base {
     typedef util::Pool<Port, Namespace, NlPoolSpec> Pool;
 
     enum Direction {
-        kPortInput = 0,
+        kPortInvalid = 0,
+        kPortInput = kIndexForDerived,
         kPortOutput,
         kPortInout,
     };
 
     Port(Vid name, Direction dir, const DataType* dt);
+    ~Port() { Base::~Base(); }
 
     Vid getName() const { return _name; }
 
     static void* operator new(std::size_t count);
-    static void operator delete(void* p);
+    static void operator delete(void* p) {}
+
+    bool isInput() const { return testFlag(kPortInput); }
+    bool isOutput() const { return testFlag(kPortOutput); }
+    bool isInout() const { return testFlag(kPortInout); }
+
+    Direction getDirection() const {
+        return isInput() ? kPortInput : isOutput() ? kPortOutput : kPortInout;
+    }
 
  private:
-    Direction           _dir;
     Vid                 _name;
     const DataType*     _dt;
 };
@@ -38,11 +47,12 @@ class Module : public Base {
     typedef util::Pool<Module, Namespace, NlPoolSpec> Pool;
 
     explicit Module(Vid name) : _name(name) {}
+    ~Module() { Base::~Base(); }
 
     Vid getName() const { return _name; }
 
     static void* operator new(std::size_t count);
-    static void operator delete(void* p);
+    static void operator delete(void* p) {}
 
     bool addPort(Port<Namespace>* port);
 

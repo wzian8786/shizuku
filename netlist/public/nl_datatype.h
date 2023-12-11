@@ -5,9 +5,7 @@
 namespace netlist {
 enum DataTypeID {
     kDtInvalidID = 0, 
-    kDtScalar2S,
-    kDtScalar4S,
-    kDtScalarStr,
+    kDtScalar,
     kDtReal,
     kDtPackedArray,
     kDtUnpackedArray,
@@ -71,42 +69,16 @@ class DataType {
     DataType* getIndex(long index)  const { Assert(0); return nullptr; }
 };
 
-class Scalar2S final : public DataType {
+class Scalar final : public DataType {
  public:
-    constexpr static DataTypeID kDataType = kDtScalar2S;
-    DataTypeID getClassID() const final { return kDtScalar2S; }
+    constexpr static DataTypeID kDataType = kDtScalar;
+    DataTypeID getClassID() const final { return kDtScalar; }
 
     size_t hash()       const final { return (size_t)kDataType; }
 
     bool isPrimitive()  const final { return true; }
     bool isInteger()    const final { return true; }
     bool is2Status()    const final { return true; }
-    size_t width()      const final { return 1; }
-};
-
-class Scalar4S final : public DataType {
- public:
-    constexpr static DataTypeID kDataType = kDtScalar4S;
-    DataTypeID getClassID() const final { return kDtScalar4S; }
-
-    size_t hash()       const final { return (size_t)kDataType; }
-
-    bool isPrimitive()  const final { return true; }
-    bool isInteger()    const final { return true; }
-    bool is4Status()    const final { return true; }
-    size_t width()      const final { return 1; }
-};
-
-class ScalarStr final : public DataType {
- public:
-    constexpr static DataTypeID kDataType = kDtScalarStr;
-    DataTypeID getClassID() const final { return kDtScalarStr; }
-
-    size_t hash()       const final { return (size_t)kDataType; }
-
-    bool isPrimitive()  const final { return true; }
-    bool isInteger()    const final { return true; }
-    bool isStrength()   const final { return true; }
     size_t width()      const final { return 1; }
 };
 

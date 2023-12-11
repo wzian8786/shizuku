@@ -2,7 +2,7 @@
 #include <cstdlib>
 namespace util {
 const char* Dispatcher::kThreadNumEnv = "SHIZUKU_THREAD_NUM";
-Dispatcher Dispatcher::gDispatcher(Dispatcher::kDefaultThreadNum);
+Dispatcher __attribute__((init_priority(101))) Dispatcher::gDispatcher(Dispatcher::kDefaultThreadNum);
 Dispatcher::Dispatcher(size_t threadNum) :
                     _status(kIdle),
                     _tasks(0),

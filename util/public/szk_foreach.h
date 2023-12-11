@@ -19,7 +19,7 @@ class NoFilter {
 template<typename T>
 class ValidFilter {
  public:
-    bool operator() (const T& t) const { return !t.isValid(); }
+    bool operator() (const T& t) const { return !t; }
 };
 
 template<typename Pool,

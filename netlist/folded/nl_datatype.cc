@@ -4,9 +4,7 @@ bool DataType::Equal::operator ()(const DataType* a, const DataType* b) const {
     DataTypeID id = a->getClassID();
     if (id == b->getClassID()) {
         switch (id) {
-        case kDtScalar2S:
-        case kDtScalar4S:
-        case kDtScalarStr:
+        case kDtScalar:
         case kDtReal:
             return true;
         case kDtPackedArray:
