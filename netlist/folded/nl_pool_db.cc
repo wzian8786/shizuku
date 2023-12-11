@@ -2,17 +2,12 @@
 #include "nl_module.h"
 #include "szk_foreach.h"
 namespace netlist {
-// initialization priority of Pool is 101 while PoolDB is 102, so the deconstructor
-// of PoolDB is always executed before Pool.
-template <uint32_t Namespace>
-PoolDB<Namespace> __attribute__((init_priority(102))) PoolDB<Namespace>::gSingleton;
-
 template <uint32_t Namespace>
 PoolDB<Namespace>::~PoolDB() {
-    util::foreach<ModulePool>([](Module<Namespace>& mod, size_t i) {
-        if (mod) {
-            mod.~Module();
-        }
+    util::foreach<ModulePool,
+                  util::TransBuilder<Module<Namespace>>,
+                  util::ValidFilter<Module<Namespace>>>([](Module<Namespace>& mod, size_t i) {
+        mod.~Module();
     }); 
 }
 
