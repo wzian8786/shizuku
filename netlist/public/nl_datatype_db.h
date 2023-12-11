@@ -6,18 +6,12 @@
 namespace netlist {
 class DataTypeDB {
  public:
-    DataTypeDB() : _s2s(nullptr),
-                   _s4s(nullptr),
-                   _sstr(nullptr),
+    DataTypeDB() : _scalar(nullptr),
                    _real(nullptr) {}
 
-    static DataTypeDB& get() { return gSingleton; }
-
     // shortcut for primitive types
-    const DataType* getScalar2S();
-    const DataType* getScalar4S();
-    const DataType* getScalarStr();
-    const DataType* getReal();
+    const DataType* getTypeScalar();
+    const DataType* getTypeReal();
 
     const DataType* persist(DataType* dt);
 
@@ -32,9 +26,7 @@ class DataTypeDB {
     DataTypeSet                     _dedup;
 
     // caches for primitve types
-    const DataType*                 _s2s; 
-    const DataType*                 _s4s;
-    const DataType*                 _sstr;
+    const DataType*                 _scalar;
     const DataType*                 _real;
 };
 }

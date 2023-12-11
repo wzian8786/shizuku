@@ -4,6 +4,7 @@
 #include <vector>
 #include "vid.h"
 #include "nl_module.h"
+#include "nl_netlist.h"
 extern int yylex(void);
 void yyerror(const char* s);
 #define YYCOPY(Dst, Src, Count)                 \
@@ -13,11 +14,12 @@ void yyerror(const char* s);
             (Dst)[yyi] = (Src)[yyi];            \
         }                                       \
     } while (0);
+using Netlist = netlist::Netlist<netlist::NL_DEFAULT>;
 using Module = netlist::Module<netlist::NL_DEFAULT>;
 using Port = netlist::Port<netlist::NL_DEFAULT>;
 
 static std::vector<Port*> gPorts;
-static Port::Direction gDirection = Port::kPortInput;
+static Port::Direction gDirection = Port::kPortInvalid;
 %}
 
 %union yyu {
@@ -92,7 +94,7 @@ direction
 
 port
     : '(' T_PORT direction T_ID ')' {
-        Port* port = new Port($4, gDirection, nullptr);
+        Port* port = new Port($4, gDirection, Netlist::get().getTypeScalar());
         gPorts.push_back(port);
     }
     ;

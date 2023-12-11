@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include <cstdlib>
 namespace util {
-Logger Logger::gLogger;
+Logger __attribute__((init_priority(101))) Logger::gLogger;
 void Logger::debug(const char* fmt, ...) {
     if (gLogger._level == kDebug) {
         fprintf(gLogger._out, "%s", "[ DEBUG ]: ");
