@@ -39,6 +39,17 @@ void Module<Namespace>::operator delete(void* p) {
     m->setID(0);
 }
 
+template<uint32_t Namespace>
+bool Module<Namespace>::addPort(Port<Namespace>* port) {
+    auto it = _portIndex.find(port->getName());
+    if (it == _portIndex.end()) {
+        _ports.emplace_back(port);
+        _portIndex[port->getName()] = port;
+        return true;
+    }
+    return false;
+}
+
 template class Port<NL_DEFAULT>;
 template class Module<NL_DEFAULT>;
 }

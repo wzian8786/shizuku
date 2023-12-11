@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <memory>
+#include <unordered_map>
 #include "netlist_def.h"
 #include "nl_datatype.h"
 #include "nl_base.h"
@@ -43,12 +44,17 @@ class Module : public Base {
     static void* operator new(std::size_t count);
     static void operator delete(void* p);
 
+    bool addPort(Port<Namespace>* port);
+
  private:
     typedef std::unique_ptr<Port<Namespace>> PortPtr;
+    typedef std::vector<PortPtr> PortHolder;
+    typedef std::unordered_map<Vid, Port<Namespace>*, Vid::Hash> PortIndex;
 
  private:
     uint32_t                _pad;
     Vid                     _name;
-    std::vector<PortPtr>    _ports;
+    PortHolder              _ports;
+    PortIndex               _portIndex;
 };
 }
