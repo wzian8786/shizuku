@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include "vid.h"
-#include "nl_module.h"
+#include "nl_folded_obj.h"
 #include "nl_netlist.h"
 extern int yylex(void);
 void yyerror(const char* s);

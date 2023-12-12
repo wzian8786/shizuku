@@ -1,4 +1,4 @@
-#include "nl_module.h"
+#include "nl_folded_obj.h"
 #include "szk_pool.h"
 #include "szk_assert.h"
 namespace netlist {

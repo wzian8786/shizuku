@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include "netlist_def.h"
+#include "nl_def.h"
 #include "nl_datatype.h"
 #include "nl_base.h"
 #include "szk_pool.h"
