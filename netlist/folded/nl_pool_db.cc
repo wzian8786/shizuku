@@ -19,4 +19,8 @@ template class Pool<netlist::Net<netlist::NL_DEFAULT>,
                     netlist::NL_DEFAULT, netlist::NlPoolSpec>;
 template class Pool<netlist::Module<netlist::NL_DEFAULT>,
                     netlist::NL_DEFAULT, netlist::NlPoolSpec>;
+template class Pool<netlist::HierInst<netlist::NL_DEFAULT>,
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec>;
+template class Pool<netlist::DownPort<netlist::NL_DEFAULT>,
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec>;
 }
