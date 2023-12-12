@@ -4,26 +4,35 @@
 #include "nl_netlist.h"
 namespace netlist {
 namespace reader {
-struct Context {
-    std::vector<netlist::Port<netlist::NL_DEFAULT>*> ports;
-    std::vector<netlist::Net<netlist::NL_DEFAULT>*> nets;
-    std::vector<netlist::HierInst<netlist::NL_DEFAULT>*> hinsts;
-    netlist::Port<netlist::NL_DEFAULT>::Direction direction;
-    std::unordered_map<netlist::Vid, netlist::Module<netlist::NL_DEFAULT>*,
-                       netlist::Vid::Hash> unresolvedModules;
-    std::unordered_map<netlist::Vid, netlist::Module<netlist::NL_DEFAULT>*,
-                       netlist::Vid::Hash> resolvedModules;
+struct NetContext {
+    std::vector<Vid> upports;
+    std::vector<std::pair<Vid, Vid> > downports;
+};
 
-    Context() : direction(netlist::Port<netlist::NL_DEFAULT>::kPortInvalid) {}
+struct Context {
+    std::vector<Port<NL_DEFAULT>*> ports;
+    std::vector<std::pair<Net<NL_DEFAULT>*, NetContext> > nets;
+    std::vector<HierInst<NL_DEFAULT>*> hinsts;
+    Port<NL_DEFAULT>::Direction direction;
+    std::unordered_map<Vid, Module<NL_DEFAULT>*,
+                       Vid::Hash> unresolvedModules;
+    std::unordered_map<Vid, Module<NL_DEFAULT>*,
+                       Vid::Hash> resolvedModules;
+
+    Context() : direction(Port<NL_DEFAULT>::kPortInvalid) {}
 
     void clear() {
         ports.clear();
         nets.clear();
         hinsts.clear();
-        direction = netlist::Port<netlist::NL_DEFAULT>::kPortInvalid;
+        direction = Port<NL_DEFAULT>::kPortInvalid;
     }
 };
+
 extern Context gCtx;
+extern std::unordered_map<Module<NL_DEFAULT>*, 
+    std::vector<std::pair<Net<NL_DEFAULT>*, NetContext>>> gNets;
+void resolveNets();
 void sanityCheck();
 }
 }

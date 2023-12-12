@@ -7,15 +7,17 @@
 #define YY_NO_INPUT
 typedef vid::VID VID;
 %}
-MODULE      module
-HIERINST    hier
-LEAFINST    leaf
-PORTREF     portref
-PORT        port
-NET         net
-INPUT       input
-OUTPUT      output
-INOUT       inout
+MODULE      %module
+HIERINST    %hier
+LEAFINST    %leaf
+PORT        %port
+NET         %net
+INPUT       %input
+OUTPUT      %output
+INOUT       %inout
+UPPORT      %upport
+DOWNPORT    %downport
+LEAFPORT    %leafport
 SPACE       [ \t\b\f\r]
 NEWLINE     \n
 
@@ -30,12 +32,14 @@ NUMBER      [1-9][0-9]*
 {MODULE}    { return T_MODULE; }
 {HIERINST}  { return T_HIERINST; }
 {LEAFINST}  { return T_LEAFINST; }
-{PORTREF}   { return T_PORTREF; }
 {PORT}      { return T_PORT; }
 {NET}       { return T_NET; }
 {INPUT}     { return T_INPUT; }
 {OUTPUT}    { return T_OUTPUT; }
 {INOUT}     { return T_INOUT; }
+{UPPORT}    { return T_UPPORT; }
+{DOWNPORT}  { return T_DOWNPORT; }
+{LEAFPORT}  { return T_LEAFPORT; }
 {ID}        { yylval.vid = VID(yytext); return T_ID; }
 {NUMBER}    { yylval.num = strtol(yytext, nullptr, 0); return T_NUMBER; }
 {SPACE}     { ; }

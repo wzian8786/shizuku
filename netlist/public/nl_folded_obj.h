@@ -81,13 +81,46 @@ class Net : public Base {
     ManagerByPool(Net);
 
     Net(Vid name, const DataType* dt) :
-        _name(name), _dt(dt) {}
+        _name(name), _dt(dt), _module(nullptr) {}
 
     Vid getName() const { return _name; }
+
+    void setModule(Module<Namespace>* module) { _module = module; }
+    const Module<Namespace>& getModule() const {
+        Assert(_module);
+        return *_module;
+    }
+
+    void addUpPort(Port<Namespace>* port) { _upPorts.emplace_back(port); }
+    void addDownPort(DownPort<Namespace>* dp) { _downPorts.emplace_back(dp); }
+
+ private:
+    typedef std::unique_ptr<DownPort<Namespace>> DownPortPtr;
+    typedef std::vector<DownPortPtr> DownPortHolder;
+    typedef std::vector<Port<Namespace>*> UpPortVec;
 
  private:
     Vid                 _name;
     const DataType*     _dt;
+    Module<Namespace>*  _module;
+    UpPortVec           _upPorts;
+    DownPortHolder      _downPorts;
+};
+
+template<uint32_t Namespace>
+class DownPort : public Base {
+ public:
+    ManagerByPool(DownPort);
+
+    DownPort(HierInst<Namespace>* inst, Port<Namespace>* port) :
+            _inst(inst), _port(port) {}
+
+    const HierInst<Namespace>& getHierInst() const { return *_inst; }
+    const Port<Namespace>& getPort() const { return *_port; }
+
+ private:
+    HierInst<Namespace>*    _inst;
+    Port<Namespace>*        _port;
 };
 
 template<uint32_t Namespace>
@@ -96,14 +129,19 @@ class HierInst : public Base {
     ManagerByPool(HierInst);
 
     HierInst(Vid name, Module<Namespace>* module) :
-        _name(name), _module(module) {}
+        _name(name), _module(module), _parent(nullptr) {}
 
     Vid getName() const { return _name; }
     const Module<Namespace>& getModule() const { return *_module; }
+    Module<Namespace>& getModule() { return *_module; }
+    const Module<Namespace>* getParent() const { return _parent; }
+    void setParent(Module<Namespace>* parent) { _parent = parent; }
+    bool isTop() const { return !_parent; }
 
  private:
     Vid                     _name;
     Module<Namespace>*      _module;
+    Module<Namespace>*      _parent;
 };
 
 template<uint32_t Namespace>
@@ -118,6 +156,12 @@ class Module : public Base {
     bool addPort(Port<Namespace>* port);
     bool addNet(Net<Namespace>* net);
     bool addHierInst(HierInst<Namespace>* inst);
+
+    const Port<Namespace>& getPort(Vid pname) const;
+    Port<Namespace>& getPort(Vid pname);
+
+    const HierInst<Namespace>& getHierInst(Vid iname) const;
+    HierInst<Namespace>& getHierInst(Vid iname);
 
  private:
     typedef std::unique_ptr<Port<Namespace>> PortPtr;

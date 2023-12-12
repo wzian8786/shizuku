@@ -3,14 +3,9 @@
 #include "szk_log.h"
 namespace netlist {
 namespace reader {
-using Netlist = netlist::Netlist<netlist::NL_DEFAULT>;
-using Port = netlist::Port<netlist::NL_DEFAULT>;
-using Net = netlist::Net<netlist::NL_DEFAULT>;
-using HierInst = netlist::HierInst<netlist::NL_DEFAULT>;
-using Module = netlist::Module<netlist::NL_DEFAULT>;
-using Vid = netlist::Vid;
 using util::Logger;
 Context gCtx;
+std::unordered_map<Module<NL_DEFAULT>*, std::vector<std::pair<Net<NL_DEFAULT>*, NetContext>>> gNets;
 void sanityCheck() {
     bool error = false;
     if (!gCtx.unresolvedModules.empty()) {
@@ -22,6 +17,39 @@ void sanityCheck() {
     if (error) {
         exit(-1);
     }
+}
+
+void resolveNets() {
+    Module<NL_DEFAULT>::foreach([](Module<NL_DEFAULT>& module, size_t) {
+        auto it = gNets.find(&module);
+        Assert(it != gNets.end());
+        for (auto nit : it->second) {
+            Net<NL_DEFAULT>* net = nit.first;
+            const NetContext& nc = nit.second;
+            module.addNet(net);
+            net->setModule(&module);
+            for (Vid pname : nc.upports) {
+                Port<NL_DEFAULT>* port = &module.getPort(pname);
+                net->addUpPort(port);
+                fprintf(stderr, "module %s, net %s, upport %s\n", module.getName().str().c_str(),
+                                                          net->getName().str().c_str(),
+                                                          pname.str().c_str());
+            }
+            for (auto p : nc.downports) {
+                Vid iname = p.first;
+                Vid pname = p.second;
+                HierInst<NL_DEFAULT>* hinst = &module.getHierInst(iname);
+                Module<NL_DEFAULT>& cmodule = hinst->getModule(); 
+                Assert(hinst->getParent() == &module);
+                Port<NL_DEFAULT>* cport = &cmodule.getPort(pname);
+                net->addDownPort(new DownPort<NL_DEFAULT>(hinst, cport));
+                fprintf(stderr, "module %s, net %s, downport %s %s\n", module.getName().str().c_str(),
+                                                          net->getName().str().c_str(),
+                                                          iname.str().c_str(),
+                                                          pname.str().c_str());
+            }
+        }
+    }, 0);
 }
 }
 }

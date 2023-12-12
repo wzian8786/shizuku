@@ -16,6 +16,17 @@ using netlist::DataTypeDB;
 using Port = netlist::Port<0>;
 using Net = netlist::Net<0>;
 using Module = netlist::Module<0>;
+using netlist::Vid;
+std::vector<std::pair<Vid, Port::Direction>> eport = {
+    { "p1", Port::kPortInput },
+    { "p2", Port::kPortOutput },
+    { "p3", Port::kPortInout },
+    { "p4", Port::kPortInput },
+    { "p5", Port::kPortOutput },
+};
+std::vector<Vid> enet = { "n1", "n2" };
+std::vector<Vid> emodule = { "m2", "m3", "m1" };
+
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     std::stringstream ss;
     ss << TEST_SOURCE << "/test.nl";
@@ -23,30 +34,29 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     netlist::reader::NetlistReader::parse(fp);
     fclose(fp);
 
+
     Port::foreach([](const Port& port, size_t i) {
-        if (i == 0) {
-            BOOST_CHECK(port.getName() == "p1");
-            BOOST_CHECK(port.getDirection() == Port::kPortInput);
-        } else if (i == 1) {
-            BOOST_CHECK(port.getName() == "p2");
-            BOOST_CHECK(port.getDirection() == Port::kPortOutput);
-        } else if (i == 2) {
-            BOOST_CHECK(port.getName() == "p3");
-            BOOST_CHECK(port.getDirection() == Port::kPortInout);
+        if (i >= eport.size()) {
+            BOOST_CHECK(0);
+        } else {
+            BOOST_CHECK(port.getName() == eport[i].first);
+            BOOST_CHECK(port.getDirection() == eport[i].second);
         }
     }, 1);
 
     Net::foreach([](const Net& net, size_t i) {
-        BOOST_CHECK(net.getName() == "n1");
+        if (i >= enet.size()) {
+            BOOST_CHECK(0);
+        } else {
+            BOOST_CHECK(net.getName() == enet[i]);
+        }
     }, 1);
 
     Module::foreach([](const Module& module, size_t i) {
-        if (i == 0) {
-            BOOST_CHECK(module.getName() == "c");
-        } else if (i == 1) {
-            BOOST_CHECK(module.getName() == "e");
-        } else if (i == 2) {
-            BOOST_CHECK(module.getName() == "a");
+        if (i >= emodule.size()) {
+            BOOST_CHECK(0);
+        } else {
+            BOOST_CHECK(module.getName() == emodule[i]);
         }
     }, 1);
 }

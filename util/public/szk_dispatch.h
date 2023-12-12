@@ -101,6 +101,7 @@ class Dispatcher {
 
     template<typename Func>
     static void parallel_for(Func func, const Range& range, size_t threads=0) {
+        if (range.first == range.second) return;
         Dispatcher& d = ref();
         threads = d.determinThreadNum(threads, range);
         d.init(threads);
@@ -110,6 +111,7 @@ class Dispatcher {
 
     template<typename Func>
     static void parallel_reduce(Func& func, const Range& range, size_t threads=0) {
+        if (range.first == range.second) return;
         Dispatcher& d = ref();
         threads = d.determinThreadNum(threads, range);
         d.init(threads);

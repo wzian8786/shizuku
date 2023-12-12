@@ -22,6 +22,7 @@ using Port = netlist::Port<netlist::NL_DEFAULT>;
 using Net = netlist::Net<netlist::NL_DEFAULT>;
 using HierInst = netlist::HierInst<netlist::NL_DEFAULT>;
 using Module = netlist::Module<netlist::NL_DEFAULT>;
+using netlist::reader::NetContext;
 using Vid = netlist::Vid;
 using util::Logger;
 using netlist::reader::gCtx;
@@ -37,7 +38,9 @@ using netlist::reader::gCtx;
 %token T_MODULE;
 %token T_HIERINST;
 %token T_LEAFINST;
-%token T_PORTREF;
+%token T_UPPORT;
+%token T_DOWNPORT;
+%token T_LEAFPORT;
 %token T_PORT;
 %token T_NET;
 %token T_INPUT;
@@ -54,6 +57,7 @@ using netlist::reader::gCtx;
 
 source_text 
     : modules {
+        netlist::reader::resolveNets();
         netlist::reader::sanityCheck();
     }
     |
@@ -83,15 +87,12 @@ module
                 Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
             }
         }
-        for (Net* net : gCtx.nets) {
-            if (!module->addNet(net)) {
-                Logger::fatal("Duplicate net '%s'", net->getName().str().c_str());
-            }
-        }
+        netlist::reader::gNets.emplace(module, std::move(gCtx.nets));
         for (HierInst* inst : gCtx.hinsts) {
             if (!module->addHierInst(inst)) {
                 Logger::fatal("Duplicate hierarchical instance '%s'", inst->getName().str().c_str());
             }
+            inst->setParent(module);
         }
         gCtx.clear();
         gCtx.resolvedModules.emplace(name, module);
@@ -130,25 +131,47 @@ port
     }
     ;
 
-net 
-    : '(' T_NET T_ID ')' {
-        Net* net = new Net($3, Netlist::get().getTypeScalar());
-        gCtx.nets.emplace_back(net);
+upport
+    : '(' T_UPPORT T_ID ')' {
+        Assert(!gCtx.nets.empty());
+        NetContext& ctx = gCtx.nets.back().second;
+        ctx.upports.emplace_back($3);
     }
     ;
 
-port_ref 
-    : '(' T_PORTREF T_ID T_ID ')'
+downport
+    : '(' T_DOWNPORT T_ID T_ID ')' {
+        Assert(!gCtx.nets.empty());
+        NetContext& ctx = gCtx.nets.back().second;
+        ctx.downports.emplace_back($3, $4);
+    }
     ;
 
-port_refs 
-    : port_ref
-    | port_refs port_ref
+leafport
+    : '(' T_LEAFPORT T_ID T_ID ')'
+    ;
+
+conn_item
+    : upport
+    | downport
+    | leafport
+    ;
+
+conn_items
+    : conn_item
+    | conn_items conn_item
     |
     ;
 
+net 
+    : '(' T_NET T_ID {
+        Net* net = new Net($3, Netlist::get().getTypeScalar());
+        gCtx.nets.emplace_back(net, NetContext());
+    } conn_items ')'
+    ;
+
 hier_inst
-    : '(' T_HIERINST T_ID T_ID port_refs ')' {
+    : '(' T_HIERINST T_ID T_ID ')' {
         Vid modName = $3;
         Module* module = nullptr;
         auto it1 = gCtx.resolvedModules.find(modName);
@@ -169,12 +192,12 @@ hier_inst
     ;
 
 leaf_inst
-    : '(' T_LEAFINST T_ID T_ID port_refs ')'
+    : '(' T_LEAFINST T_ID T_ID ')'
     ;
 
 
 %%
 
 void yyerror(const char* s) {
-    fprintf(stderr, "--- Oops, %s\n", s);
+    Logger::fatal("Oops, %s", s);
 }

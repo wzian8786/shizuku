@@ -42,8 +42,38 @@ bool Module<Namespace>::addHierInst(HierInst<Namespace>* hinst) {
     return false;
 }
 
+template<uint32_t Namespace>
+const Port<Namespace>& Module<Namespace>::getPort(Vid pname) const {
+    auto it = _portIndex.find(pname);
+    Assert(it != _portIndex.end());
+    return *it->second;
+}
+
+template<uint32_t Namespace>
+Port<Namespace>& Module<Namespace>::getPort(Vid pname) {
+    auto it = _portIndex.find(pname);
+    Assert(it != _portIndex.end());
+    return *it->second;
+}
+
+template<uint32_t Namespace>
+const HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) const {
+    auto it = _hinstIndex.find(iname);
+    Assert(it != _hinstIndex.end());
+    return *it->second;
+}
+
+template<uint32_t Namespace>
+HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) {
+    auto it = _hinstIndex.find(iname);
+    Assert(it != _hinstIndex.end());
+    return *it->second;
+}
+
 template class Port<NL_DEFAULT>;
+template class DownPort<NL_DEFAULT>;
 template class Net<NL_DEFAULT>;
+template class HierInst<NL_DEFAULT>;
 template class Module<NL_DEFAULT>;
 }
 
