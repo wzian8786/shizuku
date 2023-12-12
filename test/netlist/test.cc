@@ -25,7 +25,7 @@ std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p5", Port::kPortOutput },
 };
 std::vector<Vid> enet = { "n1", "n2" };
-std::vector<Vid> emodule = { "m2", "m3", "m1" };
+std::vector<Vid> emodule = { "m2", "m3", "m1", "m4"};
 
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     std::stringstream ss;
