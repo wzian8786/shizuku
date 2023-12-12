@@ -11,6 +11,7 @@
         (%downport i2 p4)
         (%downport i3 p5)
     )
+    (%net n3)
     (%hier \m2 \i1 )
     (%hier m2 \i2 )
     (%hier m3 i3)

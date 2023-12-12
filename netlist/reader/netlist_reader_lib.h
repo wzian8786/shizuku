@@ -10,22 +10,21 @@ struct NetContext {
 };
 
 struct Context {
-    std::vector<Port<NL_DEFAULT>*> ports;
-    std::vector<std::pair<Net<NL_DEFAULT>*, NetContext> > nets;
-    std::vector<HierInst<NL_DEFAULT>*> hinsts;
+    Module<NL_DEFAULT>* module;
     Port<NL_DEFAULT>::Direction direction;
+    std::vector<std::pair<Net<NL_DEFAULT>*, NetContext> > nets;
     std::unordered_map<Vid, Module<NL_DEFAULT>*,
                        Vid::Hash> unresolvedModules;
     std::unordered_map<Vid, Module<NL_DEFAULT>*,
                        Vid::Hash> resolvedModules;
 
-    Context() : direction(Port<NL_DEFAULT>::kPortInvalid) {}
+    Context() : module(nullptr), 
+                direction(Port<NL_DEFAULT>::kPortInvalid) {}
 
     void clear() {
-        ports.clear();
-        nets.clear();
-        hinsts.clear();
+        module = nullptr;
         direction = Port<NL_DEFAULT>::kPortInvalid;
+        nets.clear();
     }
 };
 
