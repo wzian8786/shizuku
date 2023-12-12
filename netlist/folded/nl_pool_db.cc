@@ -4,11 +4,9 @@
 namespace netlist {
 template <uint32_t Namespace>
 PoolDB<Namespace>::~PoolDB() {
-    util::foreach<ModulePool,
-                  util::TransBuilder<Module<Namespace>>,
-                  util::ValidFilter<Module<Namespace>>>([](Module<Namespace>& mod, size_t i) {
+    Module<Namespace>::foreach([](Module<Namespace>& mod, size_t i) {
         mod.~Module();
-    }); 
+    }, 0/*thread_num*/); 
 }
 
 template class PoolDB<NL_DEFAULT>;
@@ -16,6 +14,8 @@ template class PoolDB<NL_DEFAULT>;
 
 namespace util {
 template class Pool<netlist::Port<netlist::NL_DEFAULT>,
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec>;
+template class Pool<netlist::Net<netlist::NL_DEFAULT>,
                     netlist::NL_DEFAULT, netlist::NlPoolSpec>;
 template class Pool<netlist::Module<netlist::NL_DEFAULT>,
                     netlist::NL_DEFAULT, netlist::NlPoolSpec>;

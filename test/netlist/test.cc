@@ -13,9 +13,9 @@ using netlist::Real;
 using netlist::DataType;
 using netlist::PackedArray;
 using netlist::DataTypeDB;
-using netlist::Netlist;
-using netlist::Port;
-using netlist::Module;
+using Port = netlist::Port<0>;
+using Net = netlist::Net<0>;
+using Module = netlist::Module<0>;
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     std::stringstream ss;
     ss << TEST_SOURCE << "/test.nl";
@@ -23,25 +23,31 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     netlist::reader::NetlistReader::parse(fp);
     fclose(fp);
 
-    util::foreach<Netlist<0>::PortPool,
-                  util::TransBuilder<Port<0>>,
-                  util::ValidFilter<Port<0>>>([](const Port<0>& port, size_t i){
+    Port::foreach([](const Port& port, size_t i) {
         if (i == 0) {
             BOOST_CHECK(port.getName() == "p1");
-            BOOST_CHECK(port.getDirection() == Port<0>::kPortInput);
+            BOOST_CHECK(port.getDirection() == Port::kPortInput);
         } else if (i == 1) {
             BOOST_CHECK(port.getName() == "p2");
-            BOOST_CHECK(port.getDirection() == Port<0>::kPortOutput);
+            BOOST_CHECK(port.getDirection() == Port::kPortOutput);
         } else if (i == 2) {
             BOOST_CHECK(port.getName() == "p3");
-            BOOST_CHECK(port.getDirection() == Port<0>::kPortInout);
+            BOOST_CHECK(port.getDirection() == Port::kPortInout);
         }
     }, 1);
 
-    util::foreach<Netlist<0>::ModulePool,
-                  util::TransBuilder<Module<0>>,
-                  util::ValidFilter<Module<0>>>([](const Module<0>& module, size_t i){
-        BOOST_CHECK(module.getName() == "a");
+    Net::foreach([](const Net& net, size_t i) {
+        BOOST_CHECK(net.getName() == "n1");
+    }, 1);
+
+    Module::foreach([](const Module& module, size_t i) {
+        if (i == 0) {
+            BOOST_CHECK(module.getName() == "c");
+        } else if (i == 1) {
+            BOOST_CHECK(module.getName() == "e");
+        } else if (i == 2) {
+            BOOST_CHECK(module.getName() == "a");
+        }
     }, 1);
 }
 

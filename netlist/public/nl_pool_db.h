@@ -7,7 +7,5 @@ class PoolDB {
  public:
     PoolDB() {}
     ~PoolDB();
-    typedef util::Pool<Port<Namespace>, Namespace, NlPoolSpec> PortPool;
-    typedef util::Pool<Module<Namespace>, Namespace, NlPoolSpec> ModulePool;
 };
 }

@@ -2,6 +2,7 @@ include_directories(${shizuku_SOURCE_DIR}/netlist/public)
 include_directories(${shizuku_SOURCE_DIR}/vid/public)
 include_directories(${shizuku_SOURCE_DIR}/util/public)
 include_directories(${shizuku_SOURCE_DIR}/netlist/folded)
+include_directories(${shizuku_SOURCE_DIR}/netlist/reader)
 
 add_custom_command(
     OUTPUT netlist_reader_yacc.cc netlist_reader_def.h
