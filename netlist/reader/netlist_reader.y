@@ -97,12 +97,39 @@ module
         gCtx.clear();
         gCtx.resolvedModules.emplace(name, module);
     }
+    | '(' T_MODULE T_ID ')' {
+        Vid name = $3;
+        auto it = gCtx.unresolvedModules.find(name);
+        Module* module = nullptr;
+        if (gCtx.resolvedModules.find(name) != gCtx.resolvedModules.end()) {
+            Logger::fatal("Duplicate module '%s'", name.str().c_str());
+        }
+        if (it != gCtx.unresolvedModules.end()) {
+            module = it->second;
+            gCtx.unresolvedModules.erase(name);
+        } else {
+            module = new Module(name);
+        }
+        for (Port* port : gCtx.ports) {
+            if (!module->addPort(port)) {
+                Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
+            }
+        }
+        netlist::reader::gNets.emplace(module, std::move(gCtx.nets));
+        for (HierInst* inst : gCtx.hinsts) {
+            if (!module->addHierInst(inst)) {
+                Logger::fatal("Duplicate hierarchical instance '%s'", inst->getName().str().c_str());
+            }
+            inst->setParent(module);
+        }
+        gCtx.clear();
+        gCtx.resolvedModules.emplace(name, module);
+    }
     ;
 
 module_items 
     : module_item
     | module_items module_item
-    |
     ;
 
 module_item 
@@ -168,6 +195,10 @@ net
         Net* net = new Net($3, Netlist::get().getTypeScalar());
         gCtx.nets.emplace_back(net, NetContext());
     } conn_items ')'
+    | '(' T_NET T_ID ')' {
+        Net* net = new Net($3, Netlist::get().getTypeScalar());
+        gCtx.nets.emplace_back(net, NetContext());
+    }
     ;
 
 hier_inst

@@ -23,3 +23,4 @@
 (%module m3
     (%port %output p5)
 )
+(%module m4)

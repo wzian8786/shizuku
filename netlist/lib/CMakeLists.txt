@@ -7,6 +7,7 @@ include_directories(${shizuku_SOURCE_DIR}/netlist/reader)
 add_custom_command(
     OUTPUT netlist_reader_yacc.cc netlist_reader_def.h
     COMMAND bison -o netlist_reader_yacc.cc --defines=netlist_reader_def.h
+                     -Wconflicts-sr -Wcounterexamples
                      ${shizuku_SOURCE_DIR}/netlist/reader/netlist_reader.y
     DEPENDS ${shizuku_SOURCE_DIR}/netlist/reader/netlist_reader.y
     COMMENT "Generating netlist_reader_yacc.cc"
