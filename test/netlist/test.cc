@@ -7,7 +7,7 @@
 #include "nl_datatype_db.h"
 #include "szk_foreach.h"
 #include "nl_netlist.h"
-#include "nl_module.h"
+#include "nl_folded_obj.h"
 using netlist::Scalar;
 using netlist::Real;
 using netlist::DataType;

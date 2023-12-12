@@ -1,5 +1,5 @@
 #include "nl_pool_db.h"
-#include "nl_module.h"
+#include "nl_folded_obj.h"
 #include "szk_foreach.h"
 namespace netlist {
 template <uint32_t Namespace>

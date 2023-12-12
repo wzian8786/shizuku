@@ -1,5 +1,5 @@
 #pragma once
-#include "netlist_def.h"
+#include "nl_def.h"
 #include "szk_pool.h"
 namespace netlist {
 template <uint32_t Namespace>

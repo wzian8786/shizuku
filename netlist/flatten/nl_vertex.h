@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "netlist_def.h"
+#include "nl_def.h"
 #include "szk_assert.h"
 #include "szk_object.h"
 #include "vid.h"

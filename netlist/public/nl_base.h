@@ -1,5 +1,5 @@
 #pragma once
-#include "netlist_def.h"
+#include <cstdint>
 namespace netlist {
 class Base {
  public:
@@ -8,7 +8,6 @@ class Base {
         kIndexForDerived,
     };
     constexpr static size_t kNextOffset = sizeof(uint32_t);
-    static_assert(kNextOffset == 4, "size unmatch");
 
     Base() : _flags(1 << kIndexValid) {}
     ~Base() { _flags = 0; }
@@ -24,5 +23,7 @@ class Base {
  private:
     uint32_t            _flags;       
 };
+
+static_assert(sizeof(Base) == 4, "size unmatch");
 
 }

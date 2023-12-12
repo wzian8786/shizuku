@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdlib>
 #include "szk_assert.h"
-#include "netlist_def.h"
+#include "nl_def.h"
 namespace netlist {
 enum DataTypeID {
     kDtInvalidID = 0, 

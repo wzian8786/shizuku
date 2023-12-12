@@ -13,13 +13,11 @@ struct NlPoolSpec {
 
 typedef vid::Vid<vid::VN_DEFAULT> Vid;
 
-template<uint32_t>
-class Port;
+template<uint32_t> class Port;
+template<uint32_t> class Module;
+template<uint32_t> class Model;
 
-template<uint32_t>
-class Module;
-
-template<uint32_t>
-class Model;
+class DataType;
+class DataTypeDB;
 
 }
