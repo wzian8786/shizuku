@@ -8,21 +8,6 @@
 #include "szk_foreach.h"
 #include "vid.h"
 namespace netlist {
-#define ManagerByPool(T) \
-    typedef util::Pool<T, Namespace, NlPoolSpec> Pool; \
-    static void* operator new(std::size_t count) { \
-        Assert(count == sizeof(T)); \
-        uint32_t id = Pool::get().New(); \
-        T* m = &Pool::get()[id]; \
-        return m; \
-    } \
-    static void operator delete(void* p) {} \
-    ~T() { Base::~Base(); } \
-    template<typename Func> \
-    static void foreach(Func func, size_t threads) { \
-        util::foreach<typename T::Pool, util::TransBuilder<T>, util::ValidFilter<T>>(func, threads); \
-    }
-
 class Base {
  public:
     enum FlagIndex {
@@ -93,11 +78,16 @@ class Net : public Base {
 
     void addUpPort(Port<Namespace>* port) { _upPorts.emplace_back(port); }
     void addDownPort(DownPort<Namespace>* dp) { _downPorts.emplace_back(dp); }
+    void addPPort(PPort<Namespace>* pp) { _pPort.emplace_back(pp); }
 
  private:
+    typedef std::vector<Port<Namespace>*> UpPortVec;
+
     typedef std::unique_ptr<DownPort<Namespace>> DownPortPtr;
     typedef std::vector<DownPortPtr> DownPortHolder;
-    typedef std::vector<Port<Namespace>*> UpPortVec;
+
+    typedef std::unique_ptr<PPort<Namespace>> PPortPtr;
+    typedef std::vector<PPortPtr> PPortHolder;
 
  private:
     Vid                 _name;
@@ -105,6 +95,7 @@ class Net : public Base {
     Module<Namespace>*  _module;
     UpPortVec           _upPorts;
     DownPortHolder      _downPorts;
+    PPortHolder         _pPort;
 };
 
 template<uint32_t Namespace>
@@ -120,6 +111,21 @@ class DownPort : public Base {
 
  private:
     HierInst<Namespace>*    _inst;
+    Port<Namespace>*        _port;
+};
+
+template<uint32_t Namespace>
+class PPort : public Base {
+ public:
+    ManagerByPool(PPort);
+
+    PPort(PInst<Namespace>* inst, Port<Namespace>* port) :
+            _inst(inst), _port(port) {}
+
+    const PInst<Namespace>& getPInst() const { return *_inst; }
+    const Port<Namespace>& getPort() const { return *_port; }
+ private:
+    PInst<Namespace>*       _inst;
     Port<Namespace>*        _port;
 };
 
@@ -145,6 +151,30 @@ class HierInst : public Base {
 };
 
 template<uint32_t Namespace>
+class PInst : public Base {
+ public:
+    ManagerByPool(PInst);
+
+    PInst(Vid name, Process<Namespace>* proc) :
+        _name(name), _proc(proc) {}
+
+    Vid getName() const { return _name; }
+    const Process<Namespace>& getProcess() const { return *_proc; }
+    Process<Namespace>& getProcess() { return *_proc; }
+
+    const Module<Namespace>& getParent() const {
+        Assert(_parent);
+        return *_parent;
+    }
+    void setParent(Module<Namespace>* parent) { _parent = parent; }
+
+ private:
+    Vid                     _name;
+    Process<Namespace>*     _proc;
+    Module<Namespace>*      _parent;
+};
+
+template<uint32_t Namespace>
 class Module : public Base {
  public:
     ManagerByPool(Module);
@@ -156,12 +186,19 @@ class Module : public Base {
     bool addPort(Port<Namespace>* port);
     bool addNet(Net<Namespace>* net);
     bool addHierInst(HierInst<Namespace>* inst);
+    bool addPInst(PInst<Namespace>* inst);
 
+    bool hasPort(Vid) const;
     const Port<Namespace>& getPort(Vid pname) const;
     Port<Namespace>& getPort(Vid pname);
 
+    bool hasHierInst(Vid) const;
     const HierInst<Namespace>& getHierInst(Vid iname) const;
     HierInst<Namespace>& getHierInst(Vid iname);
+
+    bool hasPInst(Vid) const;
+    const PInst<Namespace>& getPInst(Vid iname) const;
+    PInst<Namespace>& getPInst(Vid iname);
 
  private:
     typedef std::unique_ptr<Port<Namespace>> PortPtr;
@@ -176,6 +213,10 @@ class Module : public Base {
     typedef std::vector<HierInstPtr> HierInstHolder;
     typedef std::unordered_map<Vid, HierInst<Namespace>*, Vid::Hash> HierInstIndex;
 
+    typedef std::unique_ptr<PInst<Namespace>> PInstPtr;
+    typedef std::vector<PInstPtr> PInstHolder;
+    typedef std::unordered_map<Vid, PInst<Namespace>*, Vid::Hash> PInstIndex;
+
  private:
     uint32_t                _pad;
     Vid                     _name;
@@ -185,6 +226,33 @@ class Module : public Base {
     NetIndex                _netIndex;
     HierInstHolder          _hinsts;
     HierInstIndex           _hinstIndex;
+    PInstHolder             _pinsts;
+    PInstIndex              _pinstIndex;
+};
+
+template<uint32_t Namespace>
+class Process : public Base{
+ public:
+    ManagerByPool(Process);
+
+    enum Type {
+        kTypeInvalid = 0,
+        kTypeComb,
+        kTypeSeq,
+        kTypeCall,
+    };
+
+    Process(Vid name);
+
+    Vid getName() const { return _name; }
+
+    void setType(Type type);
+    bool isComb() const { return testFlag(kTypeComb); }
+    bool isSeq() const { return testFlag(kTypeSeq); }
+    bool isCall() const { return testFlag(kTypeCall); }
+
+ private:
+    Vid                    _name;
 };
 
 static_assert(sizeof(Base) == 4, "size unmatch");

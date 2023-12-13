@@ -21,7 +21,9 @@ using Netlist = netlist::Netlist<netlist::NL_DEFAULT>;
 using Port = netlist::Port<netlist::NL_DEFAULT>;
 using Net = netlist::Net<netlist::NL_DEFAULT>;
 using HierInst = netlist::HierInst<netlist::NL_DEFAULT>;
+using PInst = netlist::PInst<netlist::NL_DEFAULT>;
 using Module = netlist::Module<netlist::NL_DEFAULT>;
+using Process = netlist::Process<netlist::NL_DEFAULT>;
 using netlist::reader::NetContext;
 using Vid = netlist::Vid;
 using util::Logger;
@@ -37,10 +39,10 @@ using netlist::reader::gCtx;
 
 %token T_MODULE;
 %token T_HIERINST;
-%token T_LEAFINST;
+%token T_PINST;
 %token T_UPPORT;
 %token T_DOWNPORT;
-%token T_LEAFPORT;
+%token T_PPORT;
 %token T_PORT;
 %token T_NET;
 %token T_INPUT;
@@ -48,6 +50,10 @@ using netlist::reader::gCtx;
 %token T_INOUT;
 %token T_ID;
 %token T_NUMBER;
+%token T_PROCESS;
+%token T_COMB;
+%token T_SEQ;
+%token T_CALL;
 
 %type <vid> T_ID;
 
@@ -56,19 +62,23 @@ using netlist::reader::gCtx;
 %%
 
 source_text 
-    : modules
+    : blocks
     |
     ;
 
-modules
+blocks
+    : block
+    | blocks block
+    ;
+
+block
     : module
-    | modules module
+    | process 
     ;
 
 module
     : '(' T_MODULE T_ID {
         Vid name = $3;
-        gCtx.clear();
         if (gCtx.resolvedModules.find(name) != gCtx.resolvedModules.end()) {
             Logger::fatal("Duplicate module '%s'", name.str().c_str());
         }
@@ -82,10 +92,10 @@ module
         gCtx.resolvedModules.emplace(name, gCtx.module);
     } module_items ')' {
         netlist::reader::gNets.emplace(gCtx.module, std::move(gCtx.nets));
+        gCtx.clear();
     }
     | '(' T_MODULE T_ID ')' {
         Vid name = $3;
-        gCtx.clear();
         if (gCtx.resolvedModules.find(name) != gCtx.resolvedModules.end()) {
             Logger::fatal("Duplicate module '%s'", name.str().c_str());
         }
@@ -98,6 +108,7 @@ module
         }
         netlist::reader::gNets.emplace(gCtx.module, std::move(gCtx.nets));
         gCtx.resolvedModules.emplace(name, gCtx.module);
+        gCtx.clear();
     }
     ;
 
@@ -110,7 +121,7 @@ module_item
     : port
     | net
     | hier_inst
-    | leaf_inst
+    | pinst
     ;
 
 direction 
@@ -126,8 +137,8 @@ direction
     ;
 
 port
-    : '(' T_PORT direction T_ID ')' {
-        Port* port = new Port($4, gCtx.direction, Netlist::get().getTypeScalar());
+    : '(' T_PORT T_ID direction')' {
+        Port* port = new Port($3, gCtx.direction, Netlist::get().getTypeScalar());
         if (!gCtx.module->addPort(port)) {
             Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
         }
@@ -150,14 +161,18 @@ downport
     }
     ;
 
-leafport
-    : '(' T_LEAFPORT T_ID T_ID ')'
+pport
+    : '(' T_PPORT T_ID T_ID ')' {
+        Assert(!gCtx.nets.empty());
+        NetContext& ctx = gCtx.nets.back().second;
+        ctx.pports.emplace_back($3, $4);
+    }
     ;
 
 conn_item
     : upport
     | downport
-    | leafport
+    | pport
     ;
 
 conn_items
@@ -200,10 +215,60 @@ hier_inst
     }
     ;
 
-leaf_inst
-    : '(' T_LEAFINST T_ID T_ID ')'
+pinst
+    : '(' T_PINST T_ID T_ID ')' {
+        Vid procName = $3;
+        Process* process = nullptr;
+        auto it1 = gCtx.resolvedProcesses.find(procName);
+        if (it1 != gCtx.resolvedProcesses.end()) {
+            process = it1->second;
+        } else {
+            auto it2 = gCtx.unresolvedProcesses.find(procName);
+            if (it2 != gCtx.unresolvedProcesses.end()) {
+                process = it2->second;
+            } else {
+                process = new Process(procName);
+                gCtx.unresolvedProcesses.emplace(procName, process);
+            }
+        }
+        PInst* pinst = new PInst($4, process);
+        if (!gCtx.module->addPInst(pinst)) {
+            Logger::fatal("Duplicate process instance '%s'", pinst->getName().str().c_str());
+        }
+    }
     ;
 
+process
+    : '(' T_PROCESS T_ID {
+        Vid name = $3;
+        if (gCtx.resolvedProcesses.find(name) != gCtx.resolvedProcesses.end()) {
+            Logger::fatal("Duplicate process '%s'", name.str().c_str());
+        }
+        auto it = gCtx.unresolvedProcesses.find(name);
+        if (it != gCtx.unresolvedProcesses.end()) {
+            gCtx.process = it->second;
+            gCtx.unresolvedModules.erase(name);
+        } else {
+            gCtx.process = new Process(name);
+        }
+        gCtx.resolvedProcesses.emplace(name, gCtx.process);
+    } process_type ')' {
+        Assert(gCtx.process->isComb() || gCtx.process->isSeq() || gCtx.process->isCall());
+        gCtx.process = nullptr;
+    }
+    ;
+
+process_type
+    : T_COMB {
+        gCtx.process->setType(Process::kTypeComb);
+    }
+    | T_SEQ {
+        gCtx.process->setType(Process::kTypeSeq);
+    }
+    | T_CALL {
+        gCtx.process->setType(Process::kTypeCall);
+    }
+    ;
 
 %%
 

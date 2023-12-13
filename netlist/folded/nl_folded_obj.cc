@@ -32,7 +32,6 @@ bool Module<Namespace>::addNet(Net<Namespace>* net) {
 
 template<uint32_t Namespace>
 bool Module<Namespace>::addHierInst(HierInst<Namespace>* hinst) {
-    Assert(hinst->getModule() == *this);
     auto it = _hinstIndex.find(hinst->getName());
     if (it == _hinstIndex.end()) {
         _hinsts.emplace_back(hinst);
@@ -40,6 +39,22 @@ bool Module<Namespace>::addHierInst(HierInst<Namespace>* hinst) {
         return true;
     }
     return false;
+}
+
+template<uint32_t Namespace>
+bool Module<Namespace>::addPInst(PInst<Namespace>* pinst) {
+    auto it = _pinstIndex.find(pinst->getName());
+    if (it == _pinstIndex.end()) {
+        _pinsts.emplace_back(pinst);
+        _pinstIndex.emplace(pinst->getName(), pinst);
+        return true;
+    }
+    return false;
+}
+
+template<uint32_t Namespace>
+bool Module<Namespace>::hasPort(Vid pname) const {
+    return _portIndex.find(pname) != _portIndex.end();
 }
 
 template<uint32_t Namespace>
@@ -57,6 +72,11 @@ Port<Namespace>& Module<Namespace>::getPort(Vid pname) {
 }
 
 template<uint32_t Namespace>
+bool Module<Namespace>::hasHierInst(Vid iname) const {
+    return _hinstIndex.find(iname) != _hinstIndex.end();
+}
+
+template<uint32_t Namespace>
 const HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) const {
     auto it = _hinstIndex.find(iname);
     Assert(it != _hinstIndex.end());
@@ -70,10 +90,42 @@ HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) {
     return *it->second;
 }
 
+template<uint32_t Namespace>
+bool Module<Namespace>::hasPInst(Vid iname) const {
+    return _pinstIndex.find(iname) != _pinstIndex.end();
+}
+
+template<uint32_t Namespace>
+const PInst<Namespace>& Module<Namespace>::getPInst(Vid iname) const {
+    auto it = _pinstIndex.find(iname);
+    Assert(it != _pinstIndex.end());
+    return *it->second;
+}
+
+template<uint32_t Namespace>
+PInst<Namespace>& Module<Namespace>::getPInst(Vid iname) {
+    auto it = _pinstIndex.find(iname);
+    Assert(it != _pinstIndex.end());
+    return *it->second;
+}
+
+template<uint32_t Namespace>
+Process<Namespace>::Process(Vid name) :
+            _name(name) {
+}
+
+template<uint32_t Namespace>
+void Process<Namespace>::setType(Type type) {
+    setFlag(1 << type, 0xe);
+}
+
 template class Port<NL_DEFAULT>;
 template class DownPort<NL_DEFAULT>;
+template class PPort<NL_DEFAULT>;
 template class Net<NL_DEFAULT>;
 template class HierInst<NL_DEFAULT>;
+template class PInst<NL_DEFAULT>;
 template class Module<NL_DEFAULT>;
+template class Process<NL_DEFAULT>;
 }
 
