@@ -23,9 +23,9 @@ class __attribute__((packed)) Head {
                     (1 << kIndexHead)},
              _forrent{0},
              _dfsh{0},
-             _modelh{0},
+             _proch{0},
              _dfs{0},
-             _model{0},
+             _proc{0},
              _name{0} {}
 
     operator bool() const { return _flags & (1 << kIndexValid); }
@@ -41,20 +41,20 @@ class __attribute__((packed)) Head {
         _dfsh = dfs;
     }
 
-    uint64_t getModel() const { return encode40(_modelh, _model); }
-    void setModel(uint64_t model) {
-        _model = model;
-        model >>= 32;
-        _modelh = model;
+    uint64_t getProcess() const { return encode40(_proch, _proc); }
+    void setProcess(uint64_t proc) {
+        _proc = proc;
+        proc >>= 32;
+        _proch = proc;
     }
     
  private:
     uint8_t             _flags;
     uint8_t             _forrent;
     uint8_t             _dfsh;
-    uint8_t             _modelh;
+    uint8_t             _proch;
     uint32_t            _dfs;
-    uint32_t            _model;
+    uint32_t            _proc;
     uint64_t            _name;
 };
 

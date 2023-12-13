@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdio>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -55,6 +56,8 @@ class Port : public Base {
         return isInput() ? kPortInput : isOutput() ? kPortOutput : kPortInout;
     }
 
+    void print(FILE* fp, bool indent) const;
+
  private:
     Vid                 _name;
     const DataType*     _dt;
@@ -78,7 +81,9 @@ class Net : public Base {
 
     void addUpPort(Port<Namespace>* port) { _upPorts.emplace_back(port); }
     void addDownPort(DownPort<Namespace>* dp) { _downPorts.emplace_back(dp); }
-    void addPPort(PPort<Namespace>* pp) { _pPort.emplace_back(pp); }
+    void addPPort(PPort<Namespace>* pp) { _pPorts.emplace_back(pp); }
+
+    void print(FILE* fp, bool indent) const;
 
  private:
     typedef std::vector<Port<Namespace>*> UpPortVec;
@@ -95,7 +100,7 @@ class Net : public Base {
     Module<Namespace>*  _module;
     UpPortVec           _upPorts;
     DownPortHolder      _downPorts;
-    PPortHolder         _pPort;
+    PPortHolder         _pPorts;
 };
 
 template<uint32_t Namespace>
@@ -108,6 +113,8 @@ class DownPort : public Base {
 
     const HierInst<Namespace>& getHierInst() const { return *_inst; }
     const Port<Namespace>& getPort() const { return *_port; }
+
+    void print(FILE* fp, bool indent) const;
 
  private:
     HierInst<Namespace>*    _inst;
@@ -124,6 +131,9 @@ class PPort : public Base {
 
     const PInst<Namespace>& getPInst() const { return *_inst; }
     const Port<Namespace>& getPort() const { return *_port; }
+
+    void print(FILE* fp, bool indent) const;
+
  private:
     PInst<Namespace>*       _inst;
     Port<Namespace>*        _port;
@@ -143,6 +153,8 @@ class HierInst : public Base {
     const Module<Namespace>* getParent() const { return _parent; }
     void setParent(Module<Namespace>* parent) { _parent = parent; }
     bool isTop() const { return !_parent; }
+
+    void print(FILE* fp, bool indent) const;
 
  private:
     Vid                     _name;
@@ -167,6 +179,8 @@ class PInst : public Base {
         return *_parent;
     }
     void setParent(Module<Namespace>* parent) { _parent = parent; }
+
+    void print(FILE* fp, bool indent) const;
 
  private:
     Vid                     _name;
@@ -199,6 +213,8 @@ class Module : public Base {
     bool hasPInst(Vid) const;
     const PInst<Namespace>& getPInst(Vid iname) const;
     PInst<Namespace>& getPInst(Vid iname);
+
+    void print(FILE* fp, bool indent) const;
 
  private:
     typedef std::unique_ptr<Port<Namespace>> PortPtr;
@@ -251,8 +267,22 @@ class Process : public Base{
     bool isSeq() const { return testFlag(kTypeSeq); }
     bool isCall() const { return testFlag(kTypeCall); }
 
+    bool addPort(Port<Namespace>* port);
+    bool hasPort(Vid) const;
+    const Port<Namespace>& getPort(Vid pname) const;
+    Port<Namespace>& getPort(Vid pname);
+
+    void print(FILE* fp, bool indent) const;
+
  private:
-    Vid                    _name;
+    typedef std::unique_ptr<Port<Namespace>> PortPtr;
+    typedef std::vector<PortPtr> PortHolder;
+    typedef std::unordered_map<Vid, Port<Namespace>*, Vid::Hash> PortIndex;
+
+ private:
+    Vid                     _name;
+    PortHolder              _ports;
+    PortIndex               _portIndex;
 };
 
 static_assert(sizeof(Base) == 4, "size unmatch");

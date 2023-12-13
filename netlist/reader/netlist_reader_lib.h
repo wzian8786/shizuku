@@ -27,6 +27,7 @@ struct Context {
                        Vid::Hash> resolvedProcesses;
 
     Context() : module(nullptr), 
+                process(nullptr),
                 direction(Port<NL_DEFAULT>::kPortInvalid) {}
 
     void clear() {

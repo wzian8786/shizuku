@@ -20,7 +20,6 @@ template<uint32_t> class PInst;
 template<uint32_t> class DownPort;
 template<uint32_t> class PPort;
 template<uint32_t> class Module;
-template<uint32_t> class Model;
 template<uint32_t> class Process;
 
 class DataType;
