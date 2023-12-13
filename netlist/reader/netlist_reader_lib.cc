@@ -84,8 +84,14 @@ void resolveNets() {
                 Assert(&pinst->getParent() == &module);
 
                 Process<NL_DEFAULT>& process = pinst->getProcess();
-                (void) process;
-                (void) pname;
+                if (!process.hasPort(pname)) {
+                    Logger::error("Process '%s' doesn't have port '%s'",
+                                   process.getName().str().c_str(), pname.str().c_str());
+                    error = true;
+                    return;
+                }
+                Port<NL_DEFAULT>* pport = &process.getPort(pname);
+                net->addPPort(new PPort<NL_DEFAULT>(pinst, pport));
             }
         }
     }, 0);

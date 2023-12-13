@@ -23,6 +23,8 @@ std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p3", Port::kPortInout },
     { "p4", Port::kPortInput },
     { "p5", Port::kPortOutput },
+    { "p1", Port::kPortInput },
+    { "p2", Port::kPortInput },
 };
 std::vector<Vid> enet = { "n1", "n2", "n3" };
 std::vector<Vid> emodule = { "m1", "m2", "m3", "m4"};
