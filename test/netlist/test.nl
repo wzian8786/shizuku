@@ -1,7 +1,7 @@
 (%module m1
-    (%port %input p1)
-    (%port %output p2)
-    (%port %inout p3)
+    (%port p1 %input)
+    (%port p2 %output)
+    (%port p3 %inout)
     (%net n1
         (%upport p1)
         (%upport p2)
@@ -15,13 +15,15 @@
     (%hier \m2 \i1 )
     (%hier m2 \i2 )
     (%hier m3 i3)
-    (%leaf i j)
-    (%leaf k m)
+    (%pinst i j)
+    (%pinst k m)
 )
 (%module m2
-    (%port %input p4)
+    (%port p4 %input)
 )
 (%module m3
-    (%port %output p5)
+    (%port p5 %output)
 )
-(%module m4)
+(%process m4 %seq)
+(%process m5 %call)
+(%process m6 %comb)

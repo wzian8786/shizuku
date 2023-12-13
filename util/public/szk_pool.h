@@ -213,3 +213,18 @@ bool Pool<T, Namespace, Spec>::gNoMore = false;
 template<class T, uint32_t Namespace, class Spec>
 thread_local typename Pool<T, Namespace, Spec>::Alloc Pool<T, Namespace, Spec>::tAlloc;
 }
+
+#define ManagerByPool(T) \
+    typedef util::Pool<T, Namespace, NlPoolSpec> Pool; \
+    static void* operator new(std::size_t count) { \
+        Assert(count == sizeof(T)); \
+        uint32_t id = Pool::get().New(); \
+        T* m = &Pool::get()[id]; \
+        return m; \
+    } \
+    static void operator delete(void* p) {} \
+    ~T() { Base::~Base(); } \
+    template<typename Func> \
+    static void foreach(Func func, size_t threads) { \
+        util::foreach<typename T::Pool, util::TransBuilder<T>, util::ValidFilter<T>>(func, threads); \
+    }
