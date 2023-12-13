@@ -18,7 +18,7 @@ add_subdirectory(util/lib)
 add_subdirectory(vid/lib)
 add_subdirectory(runtime/lib)
 add_subdirectory(netlist/lib)
-
+add_subdirectory(app)
 if (ENABLE_TEST)
     add_subdirectory(test)
 endif ()

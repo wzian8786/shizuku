@@ -5,6 +5,7 @@ namespace reader {
 class NetlistReader {
  public:
     static void parse(FILE* fp);
+    static void finalize();
 };
 }
 }

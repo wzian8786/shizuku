@@ -31,9 +31,6 @@ void resolveNets() {
             for (Vid pname : nc.upports) {
                 Port<NL_DEFAULT>* port = &module.getPort(pname);
                 net->addUpPort(port);
-                fprintf(stderr, "module %s, net %s, upport %s\n", module.getName().str().c_str(),
-                                                          net->getName().str().c_str(),
-                                                          pname.str().c_str());
             }
             for (auto p : nc.downports) {
                 Vid iname = p.first;
@@ -43,10 +40,6 @@ void resolveNets() {
                 Assert(hinst->getParent() == &module);
                 Port<NL_DEFAULT>* cport = &cmodule.getPort(pname);
                 net->addDownPort(new DownPort<NL_DEFAULT>(hinst, cport));
-                fprintf(stderr, "module %s, net %s, downport %s %s\n", module.getName().str().c_str(),
-                                                          net->getName().str().c_str(),
-                                                          iname.str().c_str(),
-                                                          pname.str().c_str());
             }
         }
     }, 0);

@@ -56,10 +56,7 @@ using netlist::reader::gCtx;
 %%
 
 source_text 
-    : modules {
-        netlist::reader::resolveNets();
-        netlist::reader::sanityCheck();
-    }
+    : modules
     |
     ;
 

@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     FILE* fp = fopen(ss.str().c_str(), "r");
     netlist::reader::NetlistReader::parse(fp);
     fclose(fp);
-
+    netlist::reader::NetlistReader::finalize();
 
     Port::foreach([](const Port& port, size_t i) {
         if (i >= eport.size()) {
