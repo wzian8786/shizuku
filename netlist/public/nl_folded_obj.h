@@ -15,24 +15,48 @@ class Base {
         kIndexValid = 0,
         kIndexForDerived,
     };
-    constexpr static size_t kNextOffset = sizeof(uint32_t);
+    constexpr static size_t kNextOffset = 8;
 
+    // _id is not initialized for purpose, it's actually set in
+    // operator new
     Base() : _flags(1 << kIndexValid) {}
     ~Base() { _flags = 0; }
 
+    Base(const Base&) = delete;
+    Base& operator=(const Base&) = delete;
+
     operator bool() const { return _flags & (1 << kIndexValid); }
-    void setFlag(uint32_t flag, uint32_t mask) {
-        _flags &= ~mask;
-        _flags |= flag;
-    }
-    bool testFlag(int shift) const { return _flags & (1 << shift); }
+    void clearFlag(size_t flag) { _flags &= ~(1ull << flag); }
+    void setFlag(size_t flag) { _flags |= (1ull << flag); }
+    bool testFlag(size_t shift) const { return _flags & (1 << shift); }
+
+    uint32_t getID() const { return _id; }
+    void setID(uint32_t id) { _id = id; }
 
     // there are
  private:
     uint32_t            _flags;       
+    uint32_t            _id;
 };
+static_assert(sizeof(Base) == Base::kNextOffset, "size mismatch");
 
-template<uint32_t Namespace>
+#define ManagerByPool(T) \
+    typedef util::Pool<T, NS, NlPoolSpec> Pool; \
+    static void* operator new(std::size_t count) { \
+        Assert(count == sizeof(T)); \
+        uint32_t id = Pool::get().New(); \
+        T* m = &Pool::get()[id]; \
+        m->setID(id); \
+        return m; \
+    } \
+    static void operator delete(void* p) {} \
+    ~T() { Base::~Base(); } \
+    template<typename Func> \
+    static void foreach(Func func, size_t threads) { \
+        util::foreach<typename T::Pool, util::TransBuilder<T>, util::ValidFilter<T>>(func, threads); \
+    }
+
+template<uint32_t NS>
 class Port : public Base {
  public:
     ManagerByPool(Port);
@@ -45,6 +69,7 @@ class Port : public Base {
     };
 
     Port(Vid name, Direction dir, const DataType* dt);
+    const DataType* getDataType() const { return _dt; }
 
     Vid getName() const { return _name; }
 
@@ -63,7 +88,7 @@ class Port : public Base {
     const DataType*     _dt;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class Net : public Base {
  public:
     ManagerByPool(Net);
@@ -72,169 +97,179 @@ class Net : public Base {
         _name(name), _dt(dt), _module(nullptr) {}
 
     Vid getName() const { return _name; }
+    const DataType* getDataType() const { return _dt; }
 
-    void setModule(Module<Namespace>* module) { _module = module; }
-    const Module<Namespace>& getModule() const {
+    void setModule(Module<NS>* module) { _module = module; }
+    const Module<NS>& getModule() const {
         Assert(_module);
         return *_module;
     }
 
-    void addUpPort(Port<Namespace>* port) { _upPorts.emplace_back(port); }
-    void addDownPort(DownPort<Namespace>* dp) { _downPorts.emplace_back(dp); }
-    void addPPort(PPort<Namespace>* pp) { _pPorts.emplace_back(pp); }
+    void addUpPort(Port<NS>* port) { _upPorts.emplace_back(port); }
+    void addDownPort(DownPort<NS>* dp) { _downPorts.emplace_back(dp); }
+    void addPPort(PPort<NS>* pp) { _pPorts.emplace_back(pp); }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    typedef std::vector<Port<Namespace>*> UpPortVec;
+    typedef std::vector<Port<NS>*> UpPortVec;
 
-    typedef std::unique_ptr<DownPort<Namespace>> DownPortPtr;
+    typedef std::unique_ptr<DownPort<NS>> DownPortPtr;
     typedef std::vector<DownPortPtr> DownPortHolder;
 
-    typedef std::unique_ptr<PPort<Namespace>> PPortPtr;
+    typedef std::unique_ptr<PPort<NS>> PPortPtr;
     typedef std::vector<PPortPtr> PPortHolder;
 
  private:
     Vid                 _name;
     const DataType*     _dt;
-    Module<Namespace>*  _module;
+    Module<NS>*         _module;
     UpPortVec           _upPorts;
     DownPortHolder      _downPorts;
     PPortHolder         _pPorts;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class DownPort : public Base {
  public:
     ManagerByPool(DownPort);
 
-    DownPort(HierInst<Namespace>* inst, Port<Namespace>* port) :
+    DownPort(HierInst<NS>* inst, Port<NS>* port) :
             _inst(inst), _port(port) {}
 
-    const HierInst<Namespace>& getHierInst() const { return *_inst; }
-    const Port<Namespace>& getPort() const { return *_port; }
+    const HierInst<NS>& getHierInst() const { return *_inst; }
+    const Port<NS>& getPort() const { return *_port; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    HierInst<Namespace>*    _inst;
-    Port<Namespace>*        _port;
+    HierInst<NS>*           _inst;
+    Port<NS>*               _port;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class PPort : public Base {
  public:
     ManagerByPool(PPort);
 
-    PPort(PInst<Namespace>* inst, Port<Namespace>* port) :
+    PPort(PInst<NS>* inst, Port<NS>* port) :
             _inst(inst), _port(port) {}
 
-    const PInst<Namespace>& getPInst() const { return *_inst; }
-    const Port<Namespace>& getPort() const { return *_port; }
+    const PInst<NS>& getPInst() const { return *_inst; }
+    const Port<NS>& getPort() const { return *_port; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    PInst<Namespace>*       _inst;
-    Port<Namespace>*        _port;
+    PInst<NS>*              _inst;
+    Port<NS>*               _port;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class HierInst : public Base {
  public:
     ManagerByPool(HierInst);
 
-    HierInst(Vid name, Module<Namespace>* module) :
+    HierInst(Vid name, Module<NS>* module) :
         _name(name), _module(module), _parent(nullptr) {}
 
     Vid getName() const { return _name; }
-    const Module<Namespace>& getModule() const { return *_module; }
-    Module<Namespace>& getModule() { return *_module; }
-    const Module<Namespace>* getParent() const { return _parent; }
-    void setParent(Module<Namespace>* parent) { _parent = parent; }
-    bool isTop() const { return !_parent; }
+    const Module<NS>& getModule() const { return *_module; }
+    Module<NS>& getModule() { return *_module; }
+    const Module<NS>* getParent() const { return _parent; }
+    void setParent(Module<NS>* parent) { _parent = parent; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
     Vid                     _name;
-    Module<Namespace>*      _module;
-    Module<Namespace>*      _parent;
+    Module<NS>*             _module;
+    Module<NS>*             _parent;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class PInst : public Base {
  public:
     ManagerByPool(PInst);
 
-    PInst(Vid name, Process<Namespace>* proc) :
+    PInst(Vid name, Process<NS>* proc) :
         _name(name), _proc(proc) {}
 
     Vid getName() const { return _name; }
-    const Process<Namespace>& getProcess() const { return *_proc; }
-    Process<Namespace>& getProcess() { return *_proc; }
+    const Process<NS>& getProcess() const { return *_proc; }
+    Process<NS>& getProcess() { return *_proc; }
 
-    const Module<Namespace>& getParent() const {
+    const Module<NS>& getParent() const {
         Assert(_parent);
         return *_parent;
     }
-    void setParent(Module<Namespace>* parent) { _parent = parent; }
+    void setParent(Module<NS>* parent) { _parent = parent; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
     Vid                     _name;
-    Process<Namespace>*     _proc;
-    Module<Namespace>*      _parent;
+    Process<NS>*            _proc;
+    Module<NS>*             _parent;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class Module : public Base {
  public:
     ManagerByPool(Module);
 
     explicit Module(Vid name) : _name(name) {}
 
+    enum Flag {
+        kFlagRoot = kIndexForDerived,
+        kFlagTop,
+    };
+
+    bool isRoot() const { return testFlag(kFlagRoot); }
+    bool isTop() const { return testFlag(kFlagTop); }
+    void setRoot() { setFlag(kFlagRoot); }
+    void setTop() { setFlag(kFlagTop); }
+    void clearTop() { clearFlag(kFlagTop); }
+    
     Vid getName() const { return _name; }
 
-    bool addPort(Port<Namespace>* port);
-    bool addNet(Net<Namespace>* net);
-    bool addHierInst(HierInst<Namespace>* inst);
-    bool addPInst(PInst<Namespace>* inst);
+    bool addPort(Port<NS>* port);
+    bool addNet(Net<NS>* net);
+    bool addHierInst(HierInst<NS>* inst);
+    bool addPInst(PInst<NS>* inst);
 
     bool hasPort(Vid) const;
-    const Port<Namespace>& getPort(Vid pname) const;
-    Port<Namespace>& getPort(Vid pname);
+    const Port<NS>& getPort(Vid pname) const;
+    Port<NS>& getPort(Vid pname);
 
     bool hasHierInst(Vid) const;
-    const HierInst<Namespace>& getHierInst(Vid iname) const;
-    HierInst<Namespace>& getHierInst(Vid iname);
+    const HierInst<NS>& getHierInst(Vid iname) const;
+    HierInst<NS>& getHierInst(Vid iname);
 
     bool hasPInst(Vid) const;
-    const PInst<Namespace>& getPInst(Vid iname) const;
-    PInst<Namespace>& getPInst(Vid iname);
+    const PInst<NS>& getPInst(Vid iname) const;
+    PInst<NS>& getPInst(Vid iname);
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    typedef std::unique_ptr<Port<Namespace>> PortPtr;
+    typedef std::unique_ptr<Port<NS>> PortPtr;
     typedef std::vector<PortPtr> PortHolder;
-    typedef std::unordered_map<Vid, Port<Namespace>*, Vid::Hash> PortIndex;
+    typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
 
-    typedef std::unique_ptr<Net<Namespace>> NetPtr;
+    typedef std::unique_ptr<Net<NS>> NetPtr;
     typedef std::vector<NetPtr> NetHolder;
-    typedef std::unordered_map<Vid, Net<Namespace>*, Vid::Hash> NetIndex;
+    typedef std::unordered_map<Vid, Net<NS>*, Vid::Hash> NetIndex;
 
-    typedef std::unique_ptr<HierInst<Namespace>> HierInstPtr;
+    typedef std::unique_ptr<HierInst<NS>> HierInstPtr;
     typedef std::vector<HierInstPtr> HierInstHolder;
-    typedef std::unordered_map<Vid, HierInst<Namespace>*, Vid::Hash> HierInstIndex;
+    typedef std::unordered_map<Vid, HierInst<NS>*, Vid::Hash> HierInstIndex;
 
-    typedef std::unique_ptr<PInst<Namespace>> PInstPtr;
+    typedef std::unique_ptr<PInst<NS>> PInstPtr;
     typedef std::vector<PInstPtr> PInstHolder;
-    typedef std::unordered_map<Vid, PInst<Namespace>*, Vid::Hash> PInstIndex;
+    typedef std::unordered_map<Vid, PInst<NS>*, Vid::Hash> PInstIndex;
 
  private:
-    uint32_t                _pad;
     Vid                     _name;
     PortHolder              _ports;
     PortIndex               _portIndex;
@@ -246,7 +281,7 @@ class Module : public Base {
     PInstIndex              _pinstIndex;
 };
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class Process : public Base{
  public:
     ManagerByPool(Process);
@@ -267,23 +302,21 @@ class Process : public Base{
     bool isSeq() const { return testFlag(kTypeSeq); }
     bool isCall() const { return testFlag(kTypeCall); }
 
-    bool addPort(Port<Namespace>* port);
+    bool addPort(Port<NS>* port);
     bool hasPort(Vid) const;
-    const Port<Namespace>& getPort(Vid pname) const;
-    Port<Namespace>& getPort(Vid pname);
+    const Port<NS>& getPort(Vid pname) const;
+    Port<NS>& getPort(Vid pname);
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    typedef std::unique_ptr<Port<Namespace>> PortPtr;
+    typedef std::unique_ptr<Port<NS>> PortPtr;
     typedef std::vector<PortPtr> PortHolder;
-    typedef std::unordered_map<Vid, Port<Namespace>*, Vid::Hash> PortIndex;
+    typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
 
  private:
     Vid                     _name;
     PortHolder              _ports;
     PortIndex               _portIndex;
 };
-
-static_assert(sizeof(Base) == 4, "size unmatch");
 }

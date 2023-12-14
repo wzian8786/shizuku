@@ -1,7 +1,7 @@
 #include "szk_option.h"
 #include "szk_log.h"
-#include "netlist_reader.h"
-#include "nl_folded_obj.h"
+#include "nl_reader.h"
+#include "nl_netlist.h"
 static void printBanner() {
     printf("\n");
     printf("                      Welcome\n\n");
@@ -36,11 +36,6 @@ int main(int argc, const char* argv[]) {
     printBanner();
     parseOption(argc, argv);
     parseNetlist();
-    netlist::Module<netlist::NL_DEFAULT>::foreach([](const netlist::Module<netlist::NL_DEFAULT>& module, size_t) {
-        module.print(stdout, false);
-    }, 1);
-    netlist::Process<netlist::NL_DEFAULT>::foreach([](const netlist::Process<netlist::NL_DEFAULT>& process, size_t) {
-        process.print(stdout, false);
-    }, 1);
+    netlist::Netlist<netlist::NL_DEFAULT>::get().print(stdout, true);
     return 0;
 }

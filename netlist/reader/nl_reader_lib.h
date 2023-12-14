@@ -41,6 +41,7 @@ extern Context gCtx;
 extern std::unordered_map<Module<NL_DEFAULT>*, 
     std::vector<std::pair<Net<NL_DEFAULT>*, NetContext>>> gNets;
 void resolveNets();
+void buildTops();
 void sanityCheck();
 }
 }

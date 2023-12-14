@@ -1,6 +1,6 @@
 #pragma once
 #ifdef NDEBUG 
-#define Assert(p)
+#define Assert(p) (void)(p)
 #else
 #include <cstdlib>
 #include <cstdio>

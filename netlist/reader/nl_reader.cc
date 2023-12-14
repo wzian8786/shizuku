@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "netlist_reader.h"
-#include "netlist_reader_lib.h"
+#include "nl_reader.h"
+#include "nl_reader_lib.h"
 #include "szk_assert.h"
 extern int yyparse(void);
 extern FILE* yyin;
@@ -17,6 +17,7 @@ void NetlistReader::parse(FILE* fp) {
 }
 void NetlistReader::finalize() {
     resolveNets();
+    buildTops();
     sanityCheck();
 }
 }

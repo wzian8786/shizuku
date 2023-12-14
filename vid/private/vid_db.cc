@@ -131,9 +131,8 @@ typename Vid<Namespace>::Base VidDB<Namespace>::getVid(const char* s, bool force
 
 template<uint32_t Namespace>
 void VidDB<Namespace>::predef(const std::vector<std::pair<int, std::string> >& pd) {
-    for (int i = 0; i < (int)pd.size(); ++i) {
-        const std::pair<int, std::string>& p = pd[i];
-        Assert(i == p.first);
+    for (const auto& p : pd) {
+        Assert(_predef.size() == (size_t)p.first);
         _predef.emplace_back(getVid(p.second.c_str(), false));
     }
 }

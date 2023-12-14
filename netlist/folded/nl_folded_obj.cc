@@ -1,15 +1,16 @@
 #include "nl_folded_obj.h"
 #include "szk_pool.h"
 #include "szk_assert.h"
+#include "nl_vid_db.h"
 namespace netlist {
-template<uint32_t Namespace>
-Port<Namespace>::Port(Vid name, Direction dir, const DataType* dt) :
+template<uint32_t NS>
+Port<NS>::Port(Vid name, Direction dir, const DataType* dt) :
             _name(name), _dt(dt) {
-    setFlag(1 << dir, (1 << kPortInput) | (1 << kPortOutput) | (1 << kPortInout));
+    setFlag(dir);
 }
 
-template<uint32_t Namespace>
-void Port<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void Port<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
@@ -21,8 +22,8 @@ void Port<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void Net<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void Net<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
@@ -54,8 +55,8 @@ void Net<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void HierInst<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void HierInst<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
@@ -66,8 +67,8 @@ void HierInst<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void PInst<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void PInst<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
@@ -78,8 +79,8 @@ void PInst<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void DownPort<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void DownPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
@@ -91,8 +92,8 @@ void DownPort<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void PPort<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void PPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
@@ -104,8 +105,8 @@ void PPort<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-void Module<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void Module<NS>::print(FILE* fp, bool indent) const {
     fprintf(fp, "(%%module %s",getName().str().c_str());
     if (!_ports.empty() || !_nets.empty() ||
         !_hinsts.empty() || !_pinsts.empty()) {
@@ -123,8 +124,8 @@ void Module<Namespace>::print(FILE* fp, bool indent) const {
     }
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::addPort(Port<Namespace>* port) {
+template<uint32_t NS>
+bool Module<NS>::addPort(Port<NS>* port) {
     auto it = _portIndex.find(port->getName());
     if (it == _portIndex.end()) {
         _ports.emplace_back(port);
@@ -134,8 +135,8 @@ bool Module<Namespace>::addPort(Port<Namespace>* port) {
     return false;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::addNet(Net<Namespace>* net) {
+template<uint32_t NS>
+bool Module<NS>::addNet(Net<NS>* net) {
     auto it = _netIndex.find(net->getName());
     if (it == _netIndex.end()) {
         _nets.emplace_back(net);
@@ -145,8 +146,8 @@ bool Module<Namespace>::addNet(Net<Namespace>* net) {
     return false;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::addHierInst(HierInst<Namespace>* hinst) {
+template<uint32_t NS>
+bool Module<NS>::addHierInst(HierInst<NS>* hinst) {
     auto it = _hinstIndex.find(hinst->getName());
     if (it == _hinstIndex.end()) {
         _hinsts.emplace_back(hinst);
@@ -156,8 +157,8 @@ bool Module<Namespace>::addHierInst(HierInst<Namespace>* hinst) {
     return false;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::addPInst(PInst<Namespace>* pinst) {
+template<uint32_t NS>
+bool Module<NS>::addPInst(PInst<NS>* pinst) {
     auto it = _pinstIndex.find(pinst->getName());
     if (it == _pinstIndex.end()) {
         _pinsts.emplace_back(pinst);
@@ -167,75 +168,75 @@ bool Module<Namespace>::addPInst(PInst<Namespace>* pinst) {
     return false;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::hasPort(Vid pname) const {
+template<uint32_t NS>
+bool Module<NS>::hasPort(Vid pname) const {
     return _portIndex.find(pname) != _portIndex.end();
 }
 
-template<uint32_t Namespace>
-const Port<Namespace>& Module<Namespace>::getPort(Vid pname) const {
+template<uint32_t NS>
+const Port<NS>& Module<NS>::getPort(Vid pname) const {
     auto it = _portIndex.find(pname);
     Assert(it != _portIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-Port<Namespace>& Module<Namespace>::getPort(Vid pname) {
+template<uint32_t NS>
+Port<NS>& Module<NS>::getPort(Vid pname) {
     auto it = _portIndex.find(pname);
     Assert(it != _portIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::hasHierInst(Vid iname) const {
+template<uint32_t NS>
+bool Module<NS>::hasHierInst(Vid iname) const {
     return _hinstIndex.find(iname) != _hinstIndex.end();
 }
 
-template<uint32_t Namespace>
-const HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) const {
+template<uint32_t NS>
+const HierInst<NS>& Module<NS>::getHierInst(Vid iname) const {
     auto it = _hinstIndex.find(iname);
     Assert(it != _hinstIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-HierInst<Namespace>& Module<Namespace>::getHierInst(Vid iname) {
+template<uint32_t NS>
+HierInst<NS>& Module<NS>::getHierInst(Vid iname) {
     auto it = _hinstIndex.find(iname);
     Assert(it != _hinstIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-bool Module<Namespace>::hasPInst(Vid iname) const {
+template<uint32_t NS>
+bool Module<NS>::hasPInst(Vid iname) const {
     return _pinstIndex.find(iname) != _pinstIndex.end();
 }
 
-template<uint32_t Namespace>
-const PInst<Namespace>& Module<Namespace>::getPInst(Vid iname) const {
+template<uint32_t NS>
+const PInst<NS>& Module<NS>::getPInst(Vid iname) const {
     auto it = _pinstIndex.find(iname);
     Assert(it != _pinstIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-PInst<Namespace>& Module<Namespace>::getPInst(Vid iname) {
+template<uint32_t NS>
+PInst<NS>& Module<NS>::getPInst(Vid iname) {
     auto it = _pinstIndex.find(iname);
     Assert(it != _pinstIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-Process<Namespace>::Process(Vid name) :
+template<uint32_t NS>
+Process<NS>::Process(Vid name) :
             _name(name) {
 }
 
-template<uint32_t Namespace>
-void Process<Namespace>::setType(Type type) {
-    setFlag(1 << type, 0xe);
+template<uint32_t NS>
+void Process<NS>::setType(Type type) {
+    setFlag(type);
 }
 
-template<uint32_t Namespace>
-bool Process<Namespace>::addPort(Port<Namespace>* port) {
+template<uint32_t NS>
+bool Process<NS>::addPort(Port<NS>* port) {
     auto it = _portIndex.find(port->getName());
     if (it == _portIndex.end()) {
         _ports.emplace_back(port);
@@ -245,27 +246,27 @@ bool Process<Namespace>::addPort(Port<Namespace>* port) {
     return false;
 }
 
-template<uint32_t Namespace>
-bool Process<Namespace>::hasPort(Vid pname) const {
+template<uint32_t NS>
+bool Process<NS>::hasPort(Vid pname) const {
     return _portIndex.find(pname) != _portIndex.end();
 }
 
-template<uint32_t Namespace>
-const Port<Namespace>& Process<Namespace>::getPort(Vid pname) const {
+template<uint32_t NS>
+const Port<NS>& Process<NS>::getPort(Vid pname) const {
     auto it = _portIndex.find(pname);
     Assert(it != _portIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-Port<Namespace>& Process<Namespace>::getPort(Vid pname) {
+template<uint32_t NS>
+Port<NS>& Process<NS>::getPort(Vid pname) {
     auto it = _portIndex.find(pname);
     Assert(it != _portIndex.end());
     return *it->second;
 }
 
-template<uint32_t Namespace>
-void Process<Namespace>::print(FILE* fp, bool indent) const {
+template<uint32_t NS>
+void Process<NS>::print(FILE* fp, bool indent) const {
     fprintf(fp, "(%%process %s %s",getName().str().c_str(),
                     isComb() ? "%comb" :
                     isSeq() ? "%seq" : "%call");
