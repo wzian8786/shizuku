@@ -6,7 +6,7 @@
 #include "vid.h"
 #include "nl_folded_obj.h"
 #include "nl_netlist.h"
-#include "netlist_reader_lib.h"
+#include "nl_reader_lib.h"
 #include "szk_log.h"
 extern int yylex(void);
 void yyerror(const char* s);

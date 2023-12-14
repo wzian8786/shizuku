@@ -47,6 +47,9 @@ class __attribute__((packed)) Head {
         proc >>= 32;
         _proch = proc;
     }
+
+ private:
+    uint8_t getForrent() const { return _forrent; }
     
  private:
     uint8_t             _flags;
@@ -95,7 +98,7 @@ class Cell {
 
 static_assert(sizeof(Cell) == sizeof(Head), "unexpected Cell size");
 
-template<uint32_t Namespace>
+template<uint32_t NS>
 class Vertex : public Head {
  public:
     //explicit Vertex(const Model&);
@@ -104,6 +107,6 @@ class Vertex : public Head {
     Cell                _cell[1];
 };
 
-static_assert(sizeof(Vertex<NL_DEFAULT>) == 2 * sizeof(Cell));
+static_assert(sizeof(Vertex<NL_DEFAULT>) == 2 * sizeof(Cell), "unexpected Vertex size");
 
 }

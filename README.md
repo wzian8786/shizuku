@@ -14,8 +14,17 @@ To not make things too complicate
 2. Frontend and `Verilog` based optimization is not involved, as it can reuse existing code base like `iverilog`.
 
 ## How to make
-1. Make sure you have valid boost installation which can be identified by cmake.
-2. Run following commands.
+1. Install boost
+```sh
+# for debian && ubuntu user
+sudo apt install libboost-all-dev
+```
+2. Install bison & flex
+``` sh
+# for debian && ubuntu user
+sudo apt install bison flex
+```
+3. Run following commands.
 ```sh
 mkdir build
 cd build

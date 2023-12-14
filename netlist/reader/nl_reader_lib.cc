@@ -1,6 +1,7 @@
-#include "netlist_reader_lib.h"
+#include "nl_reader_lib.h"
 #include <cstdlib>
 #include "szk_log.h"
+#include "nl_netlist.h"
 namespace netlist {
 namespace reader {
 using util::Logger;
@@ -25,9 +26,26 @@ void sanityCheck() {
     }
 }
 
+void buildTops() {
+    std::vector<uint8_t> notTop(Module<NL_DEFAULT>::Pool::get().getMaxSize());
+    HierInst<NL_DEFAULT>::foreach([&notTop](const HierInst<NL_DEFAULT>& hinst, size_t i) {
+        notTop[hinst.getModule().getID()] = 1;
+    }, 0);
+    Module<NL_DEFAULT>::foreach([&notTop](Module<NL_DEFAULT>& module, size_t i) {
+        if (module.isRoot()) return;
+        if (notTop[i]) return;
+        HierInst<NL_DEFAULT>* hinst = new HierInst<NL_DEFAULT>(module.getName(), &module);
+        module.setTop();
+        bool suc = Netlist<NL_DEFAULT>::get().getRoot().addHierInst(hinst);
+        // there is no module whose name is identical, so addHierInst must success
+        Assert(suc);
+    }, 0);
+}
+
 void resolveNets() {
     bool error = false;
     Module<NL_DEFAULT>::foreach([&error](Module<NL_DEFAULT>& module, size_t) {
+        if (module.isRoot()) return;
         auto it = gNets.find(&module);
         Assert(it != gNets.end());
         for (auto nit : it->second) {
@@ -35,14 +53,22 @@ void resolveNets() {
             const NetContext& nc = nit.second;
             module.addNet(net);
             net->setModule(&module);
+            const DataType* dt = net->getDataType();
             for (Vid pname : nc.upports) {
                 if (!module.hasPort(pname)) {
                     Logger::error("Module '%s' doesn't have port '%s'",
                                    module.getName().str().c_str(), pname.str().c_str());
                     error = true;
-                    return;
+                    continue;
                 }
                 Port<NL_DEFAULT>* port = &module.getPort(pname);
+                if (port->getDataType() != dt) {
+                    Logger::error("DataType mismatch net '%s', port '%s'",
+                                   net->getName().str().c_str(),
+                                   port->getName().str().c_str());
+                    error = true;
+                    continue;
+                }
                 net->addUpPort(port);
             }
             for (auto p : nc.downports) {
@@ -53,7 +79,7 @@ void resolveNets() {
                     Logger::error("Module '%s' doesn't have child instance '%s'",
                                    module.getName().str().c_str(), iname.str().c_str());
                     error = true;
-                    return;
+                    continue;
                 }
                 HierInst<NL_DEFAULT>* hinst = &module.getHierInst(iname);
 
@@ -64,9 +90,17 @@ void resolveNets() {
                     Logger::error("Module '%s' doesn't have port '%s'",
                                    cmodule.getName().str().c_str(), pname.str().c_str());
                     error = true;
-                    return;
+                    continue;
                 }
                 Port<NL_DEFAULT>* cport = &cmodule.getPort(pname);
+                if (cport->getDataType() != dt) {
+                    Logger::error("DataType mismatch net '%s', instance '%s', port '%s'",
+                                   net->getName().str().c_str(),
+                                   iname.str().c_str(),
+                                   cport->getName().str().c_str());
+                    error = true;
+                    continue;
+                }
                 net->addDownPort(new DownPort<NL_DEFAULT>(hinst, cport));
             }
 
@@ -78,7 +112,7 @@ void resolveNets() {
                     Logger::error("Module '%s' doesn't have process instance '%s'",
                                    module.getName().str().c_str(), iname.str().c_str());
                     error = true;
-                    return;
+                    continue;
                 }
                 PInst<NL_DEFAULT>* pinst = &module.getPInst(iname);
                 Assert(&pinst->getParent() == &module);
@@ -88,9 +122,17 @@ void resolveNets() {
                     Logger::error("Process '%s' doesn't have port '%s'",
                                    process.getName().str().c_str(), pname.str().c_str());
                     error = true;
-                    return;
+                    continue;
                 }
                 Port<NL_DEFAULT>* pport = &process.getPort(pname);
+                if (pport->getDataType() != dt) {
+                    Logger::error("DataType mismatch net '%s', process '%s', port '%s'",
+                                   net->getName().str().c_str(),
+                                   pname.str().c_str(),
+                                   pport->getName().str().c_str());
+                    error = true;
+                    continue;
+                }
                 net->addPPort(new PPort<NL_DEFAULT>(pinst, pport));
             }
         }

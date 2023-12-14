@@ -2,12 +2,12 @@
 #include <stdio.h>
 #include <sstream>
 #include <boost/test/unit_test.hpp>
-#include "netlist_reader.h"
+#include "nl_reader.h"
 #include "nl_datatype.h"
 #include "nl_datatype_db.h"
-#include "szk_foreach.h"
 #include "nl_netlist.h"
 #include "nl_folded_obj.h"
+#include "szk_foreach.h"
 using netlist::Scalar;
 using netlist::Real;
 using netlist::DataType;
@@ -27,7 +27,7 @@ std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p2", Port::kPortInput },
 };
 std::vector<Vid> enet = { "n1", "n2", "n3" };
-std::vector<Vid> emodule = { "m1", "m2", "m3", "m4"};
+std::vector<Vid> emodule = { "S$Root", "m1", "m2", "m3", "m4"};
 
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     std::stringstream ss;

@@ -3,6 +3,8 @@ include_directories(${shizuku_SOURCE_DIR}/vid/public)
 include_directories(${shizuku_SOURCE_DIR}/util/public)
 include_directories(${shizuku_SOURCE_DIR}/netlist/folded)
 include_directories(${shizuku_SOURCE_DIR}/netlist/reader)
+include_directories(${shizuku_SOURCE_DIR}/netlist/flatten)
+include_directories(${shizuku_SOURCE_DIR}/netlist/elab)
 
 add_custom_command(
     OUTPUT netlist_reader_yacc.cc netlist_reader_def.h
@@ -27,8 +29,10 @@ add_library(netlist_folded ${netlist_folded_files})
 file(GLOB netlist_flatten_files "${shizuku_SOURCE_DIR}/netlist/flatten/*.cc")
 add_library(netlist_flatten ${netlist_flatten_files})
 
-file(GLOB netlist_reader_files "${shizuku_SOURCE_DIR}/netlist/reader/*.cc")
+file(GLOB netlist_elab_files "${shizuku_SOURCE_DIR}/netlist/elab/*.cc")
+add_library(netlist_elab ${netlist_elab_files})
 
+file(GLOB netlist_reader_files "${shizuku_SOURCE_DIR}/netlist/reader/*.cc")
 add_library(netlist_reader ${CMAKE_CURRENT_BINARY_DIR}/netlist_reader_lex.cc
                            ${CMAKE_CURRENT_BINARY_DIR}/netlist_reader_yacc.cc
                            ${netlist_reader_files})

@@ -2,12 +2,17 @@
 #include "nl_folded_obj.h"
 #include "szk_foreach.h"
 namespace netlist {
-template <uint32_t Namespace>
-PoolDB<Namespace>::~PoolDB() {
-    Module<Namespace>::foreach([](Module<Namespace>& mod, size_t i) {
+template <uint32_t NS>
+PoolDB<NS>::~PoolDB() {
+    clear();
+}
+
+template <uint32_t NS>
+void PoolDB<NS>::clear() {
+    Module<NS>::foreach([](Module<NS>& mod, size_t i) {
         mod.~Module();
     }, 0/*thread_num*/); 
-    Process<Namespace>::foreach([](Process<Namespace>& p, size_t i) {
+    Process<NS>::foreach([](Process<NS>& p, size_t i) {
         p.~Process();
     }, 0);
 }
