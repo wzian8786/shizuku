@@ -21,10 +21,10 @@ void Netlist<NS>::topDown(std::vector<Module<NS>*>& modules) {
     size_t i = 0;
     while (i != modules.size()) {
         Module<NS>& cur = *modules[i];
-        const typename Module<NS>::HierInstHolder& hinsts = cur.getHierInsts();
-        for (auto it = hinsts.begin(); it != hinsts.end(); ++it) {
-            HierInst<NS>& hinst = **it;
-            Module<NS>& module = hinst.getModule();
+        const typename Module<NS>::MInstHolder& minsts = cur.getMInsts();
+        for (auto it = minsts.begin(); it != minsts.end(); ++it) {
+            MInst<NS>& minst = **it;
+            Module<NS>& module = minst.getModule();
             if (!visited[module.getID()]) {
                 visited[module.getID()] = 1;
                 modules.push_back(&module);

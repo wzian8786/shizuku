@@ -28,12 +28,12 @@ void Net<NS>::print(FILE* fp, bool indent) const {
         fprintf(fp, "%s", "    ");
     }
     fprintf(fp, "(%%net %s", getName().str().c_str());
-    if (!_upPorts.empty() || !_downPorts.empty() || !_pPorts.empty()) {
+    if (!_mPorts.empty() || !_iPorts.empty() || !_pPorts.empty()) {
         if (indent) {
             fputc('\n', fp);
         }
     }
-    for (const auto& p : _upPorts) {
+    for (const auto& p : _mPorts) {
         if (indent) {
             fprintf(fp, "%s", "        ");
         }
@@ -42,10 +42,10 @@ void Net<NS>::print(FILE* fp, bool indent) const {
             fprintf(fp, "\n");
         }
     }
-    for (const auto& p : _downPorts) p->print(fp, indent);
+    for (const auto& p : _iPorts) p->print(fp, indent);
     for (const auto& p : _pPorts) p->print(fp, indent);
     if (indent) {
-        if (!_upPorts.empty() || !_downPorts.empty() || !_pPorts.empty()) {
+        if (!_mPorts.empty() || !_iPorts.empty() || !_pPorts.empty()) {
             fprintf(fp, "%s", "    ");
         }
     }
@@ -56,7 +56,7 @@ void Net<NS>::print(FILE* fp, bool indent) const {
 }
 
 template<uint32_t NS>
-void HierInst<NS>::print(FILE* fp, bool indent) const {
+void MInst<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
@@ -80,12 +80,12 @@ void PInst<NS>::print(FILE* fp, bool indent) const {
 }
 
 template<uint32_t NS>
-void DownPort<NS>::print(FILE* fp, bool indent) const {
+void IPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
     fprintf(fp, "(%%downport %s %s)", 
-                getHierInst().getName().str().c_str(),
+                getMInst().getName().str().c_str(),
                 getPort().getName().str().c_str());
     if (indent) {
         fprintf(fp, "\n");
@@ -109,14 +109,14 @@ template<uint32_t NS>
 void Module<NS>::print(FILE* fp, bool indent) const {
     fprintf(fp, "(%%module %s",getName().str().c_str());
     if (!_ports.empty() || !_nets.empty() ||
-        !_hinsts.empty() || !_pinsts.empty()) {
+        !_minsts.empty() || !_pinsts.empty()) {
         if (indent) {
             fputc('\n', fp);
         }
     }
     for (const auto& p : _ports) p->print(fp, indent);
     for (const auto& p : _nets) p->print(fp, indent);
-    for (const auto& p : _hinsts) p->print(fp, indent);
+    for (const auto& p : _minsts) p->print(fp, indent);
     for (const auto& p : _pinsts) p->print(fp, indent);
     fputc(')', fp);
     if (indent) {
@@ -147,11 +147,11 @@ bool Module<NS>::addNet(Net<NS>* net) {
 }
 
 template<uint32_t NS>
-bool Module<NS>::addHierInst(HierInst<NS>* hinst) {
-    auto it = _hinstIndex.find(hinst->getName());
-    if (it == _hinstIndex.end()) {
-        _hinsts.emplace_back(hinst);
-        _hinstIndex.emplace(hinst->getName(), hinst);
+bool Module<NS>::addMInst(MInst<NS>* minst) {
+    auto it = _minstIndex.find(minst->getName());
+    if (it == _minstIndex.end()) {
+        _minsts.emplace_back(minst);
+        _minstIndex.emplace(minst->getName(), minst);
         return true;
     }
     return false;
@@ -188,21 +188,21 @@ Port<NS>& Module<NS>::getPort(Vid pname) {
 }
 
 template<uint32_t NS>
-bool Module<NS>::hasHierInst(Vid iname) const {
-    return _hinstIndex.find(iname) != _hinstIndex.end();
+bool Module<NS>::hasMInst(Vid iname) const {
+    return _minstIndex.find(iname) != _minstIndex.end();
 }
 
 template<uint32_t NS>
-const HierInst<NS>& Module<NS>::getHierInst(Vid iname) const {
-    auto it = _hinstIndex.find(iname);
-    Assert(it != _hinstIndex.end());
+const MInst<NS>& Module<NS>::getMInst(Vid iname) const {
+    auto it = _minstIndex.find(iname);
+    Assert(it != _minstIndex.end());
     return *it->second;
 }
 
 template<uint32_t NS>
-HierInst<NS>& Module<NS>::getHierInst(Vid iname) {
-    auto it = _hinstIndex.find(iname);
-    Assert(it != _hinstIndex.end());
+MInst<NS>& Module<NS>::getMInst(Vid iname) {
+    auto it = _minstIndex.find(iname);
+    Assert(it != _minstIndex.end());
     return *it->second;
 }
 
@@ -293,10 +293,10 @@ void Process<NS>::print(FILE* fp, bool indent) const {
 }
 
 template class Port<NL_DEFAULT>;
-template class DownPort<NL_DEFAULT>;
+template class IPort<NL_DEFAULT>;
 template class PPort<NL_DEFAULT>;
 template class Net<NL_DEFAULT>;
-template class HierInst<NL_DEFAULT>;
+template class MInst<NL_DEFAULT>;
 template class PInst<NL_DEFAULT>;
 template class Module<NL_DEFAULT>;
 template class Process<NL_DEFAULT>;

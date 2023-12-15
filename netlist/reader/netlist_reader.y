@@ -20,7 +20,7 @@ void yyerror(const char* s);
 using Netlist = netlist::Netlist<netlist::NL_DEFAULT>;
 using Port = netlist::Port<netlist::NL_DEFAULT>;
 using Net = netlist::Net<netlist::NL_DEFAULT>;
-using HierInst = netlist::HierInst<netlist::NL_DEFAULT>;
+using MInst = netlist::MInst<netlist::NL_DEFAULT>;
 using PInst = netlist::PInst<netlist::NL_DEFAULT>;
 using Module = netlist::Module<netlist::NL_DEFAULT>;
 using Process = netlist::Process<netlist::NL_DEFAULT>;
@@ -38,10 +38,10 @@ using netlist::reader::gCtx;
 }
 
 %token T_MODULE;
-%token T_HIERINST;
+%token T_MINST;
 %token T_PINST;
-%token T_UPPORT;
-%token T_DOWNPORT;
+%token T_MPORT;
+%token T_IPORT;
 %token T_PPORT;
 %token T_PORT;
 %token T_NET;
@@ -120,7 +120,7 @@ module_items
 module_item 
     : port
     | net
-    | hier_inst
+    | minst
     | pinst
     ;
 
@@ -154,7 +154,7 @@ port
     ;
 
 upport
-    : '(' T_UPPORT T_ID ')' {
+    : '(' T_MPORT T_ID ')' {
         Assert(!gCtx.nets.empty());
         NetContext& ctx = gCtx.nets.back().second;
         ctx.upports.emplace_back($3);
@@ -162,7 +162,7 @@ upport
     ;
 
 downport
-    : '(' T_DOWNPORT T_ID T_ID ')' {
+    : '(' T_IPORT T_ID T_ID ')' {
         Assert(!gCtx.nets.empty());
         NetContext& ctx = gCtx.nets.back().second;
         ctx.downports.emplace_back($3, $4);
@@ -199,8 +199,8 @@ net
     }
     ;
 
-hier_inst
-    : '(' T_HIERINST T_ID T_ID ')' {
+minst
+    : '(' T_MINST T_ID T_ID ')' {
         Vid modName = $4;
         Module* module = nullptr;
         auto it1 = gCtx.resolvedModules.find(modName);
@@ -215,11 +215,11 @@ hier_inst
                 gCtx.unresolvedModules.emplace(modName, module);
             }
         }
-        HierInst* hinst = new HierInst($3, module); 
-        if (!gCtx.module->addHierInst(hinst)) {
-            Logger::fatal("Duplicate hierarchical instance '%s'", hinst->getName().str().c_str());
+        MInst* minst = new MInst($3, module); 
+        if (!gCtx.module->addMInst(minst)) {
+            Logger::fatal("Duplicate module instance '%s'", minst->getName().str().c_str());
         }
-        hinst->setParent(gCtx.module);
+        minst->setParent(gCtx.module);
     }
     ;
 

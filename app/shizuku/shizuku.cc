@@ -37,5 +37,6 @@ int main(int argc, const char* argv[]) {
     parseOption(argc, argv);
     parseNetlist();
     netlist::Netlist<netlist::NL_DEFAULT>::get().print(stdout, true);
+    netlist::Netlist<netlist::NL_DEFAULT>::get().elab();
     return 0;
 }
