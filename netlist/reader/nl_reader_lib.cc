@@ -28,16 +28,16 @@ void sanityCheck() {
 
 void buildTops() {
     std::vector<uint8_t> notTop(Module<NL_DEFAULT>::Pool::get().getMaxSize());
-    HierInst<NL_DEFAULT>::foreach([&notTop](const HierInst<NL_DEFAULT>& hinst, size_t i) {
-        notTop[hinst.getModule().getID()] = 1;
+    MInst<NL_DEFAULT>::foreach([&notTop](const MInst<NL_DEFAULT>& minst, size_t i) {
+        notTop[minst.getModule().getID()] = 1;
     }, 0);
     Module<NL_DEFAULT>::foreach([&notTop](Module<NL_DEFAULT>& module, size_t i) {
         if (module.isRoot()) return;
         if (notTop[i]) return;
-        HierInst<NL_DEFAULT>* hinst = new HierInst<NL_DEFAULT>(module.getName(), &module);
+        MInst<NL_DEFAULT>* minst = new MInst<NL_DEFAULT>(module.getName(), &module);
         module.setTop();
-        bool suc = Netlist<NL_DEFAULT>::get().getRoot().addHierInst(hinst);
-        // there is no module whose name is identical, so addHierInst must success
+        bool suc = Netlist<NL_DEFAULT>::get().getRoot().addMInst(minst);
+        // there is no module whose name is identical, so addMInst must success
         Assert(suc);
     }, 0);
 }
@@ -69,22 +69,22 @@ void resolveNets() {
                     error = true;
                     continue;
                 }
-                net->addUpPort(port);
+                net->addMPort(port);
             }
             for (auto p : nc.downports) {
                 Vid iname = p.first;
                 Vid pname = p.second;
 
-                if (!module.hasHierInst(iname)) {
+                if (!module.hasMInst(iname)) {
                     Logger::error("Module '%s' doesn't have child instance '%s'",
                                    module.getName().str().c_str(), iname.str().c_str());
                     error = true;
                     continue;
                 }
-                HierInst<NL_DEFAULT>* hinst = &module.getHierInst(iname);
+                MInst<NL_DEFAULT>* minst = &module.getMInst(iname);
 
-                Module<NL_DEFAULT>& cmodule = hinst->getModule(); 
-                Assert(hinst->getParent() == &module);
+                Module<NL_DEFAULT>& cmodule = minst->getModule(); 
+                Assert(minst->getParent() == &module);
 
                 if (!cmodule.hasPort(pname)) {
                     Logger::error("Module '%s' doesn't have port '%s'",
@@ -101,7 +101,7 @@ void resolveNets() {
                     error = true;
                     continue;
                 }
-                net->addDownPort(new DownPort<NL_DEFAULT>(hinst, cport));
+                net->addIPort(new IPort<NL_DEFAULT>(minst, cport));
             }
 
             for (auto p : nc.pports) {

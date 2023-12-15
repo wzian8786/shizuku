@@ -105,17 +105,17 @@ class Net : public Base {
         return *_module;
     }
 
-    void addUpPort(Port<NS>* port) { _upPorts.emplace_back(port); }
-    void addDownPort(DownPort<NS>* dp) { _downPorts.emplace_back(dp); }
+    void addMPort(Port<NS>* port) { _mPorts.emplace_back(port); }
+    void addIPort(IPort<NS>* dp) { _iPorts.emplace_back(dp); }
     void addPPort(PPort<NS>* pp) { _pPorts.emplace_back(pp); }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    typedef std::vector<Port<NS>*> UpPortVec;
+    typedef std::vector<Port<NS>*> MPortVec;
 
-    typedef std::unique_ptr<DownPort<NS>> DownPortPtr;
-    typedef std::vector<DownPortPtr> DownPortHolder;
+    typedef std::unique_ptr<IPort<NS>> IPortPtr;
+    typedef std::vector<IPortPtr> IPortHolder;
 
     typedef std::unique_ptr<PPort<NS>> PPortPtr;
     typedef std::vector<PPortPtr> PPortHolder;
@@ -124,26 +124,26 @@ class Net : public Base {
     Vid                 _name;
     const DataType*     _dt;
     Module<NS>*         _module;
-    UpPortVec           _upPorts;
-    DownPortHolder      _downPorts;
+    MPortVec            _mPorts;
+    IPortHolder         _iPorts;
     PPortHolder         _pPorts;
 };
 
 template<uint32_t NS>
-class DownPort : public Base {
+class IPort : public Base {
  public:
-    ManagerByPool(DownPort);
+    ManagerByPool(IPort);
 
-    DownPort(HierInst<NS>* inst, Port<NS>* port) :
+    IPort(MInst<NS>* inst, Port<NS>* port) :
             _inst(inst), _port(port) {}
 
-    const HierInst<NS>& getHierInst() const { return *_inst; }
+    const MInst<NS>& getMInst() const { return *_inst; }
     const Port<NS>& getPort() const { return *_port; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    HierInst<NS>*           _inst;
+    MInst<NS>*              _inst;
     Port<NS>*               _port;
 };
 
@@ -166,11 +166,11 @@ class PPort : public Base {
 };
 
 template<uint32_t NS>
-class HierInst : public Base {
+class MInst : public Base {
  public:
-    ManagerByPool(HierInst);
+    ManagerByPool(MInst);
 
-    HierInst(Vid name, Module<NS>* module) :
+    MInst(Vid name, Module<NS>* module) :
         _name(name), _module(module), _parent(nullptr) {}
 
     Vid getName() const { return _name; }
@@ -235,16 +235,16 @@ class Module : public Base {
 
     bool addPort(Port<NS>* port);
     bool addNet(Net<NS>* net);
-    bool addHierInst(HierInst<NS>* inst);
+    bool addMInst(MInst<NS>* inst);
     bool addPInst(PInst<NS>* inst);
 
     bool hasPort(Vid) const;
     const Port<NS>& getPort(Vid pname) const;
     Port<NS>& getPort(Vid pname);
 
-    bool hasHierInst(Vid) const;
-    const HierInst<NS>& getHierInst(Vid iname) const;
-    HierInst<NS>& getHierInst(Vid iname);
+    bool hasMInst(Vid) const;
+    const MInst<NS>& getMInst(Vid iname) const;
+    MInst<NS>& getMInst(Vid iname);
 
     bool hasPInst(Vid) const;
     const PInst<NS>& getPInst(Vid iname) const;
@@ -255,7 +255,7 @@ class Module : public Base {
  private:
     typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
     typedef std::unordered_map<Vid, Net<NS>*, Vid::Hash> NetIndex;
-    typedef std::unordered_map<Vid, HierInst<NS>*, Vid::Hash> HierInstIndex;
+    typedef std::unordered_map<Vid, MInst<NS>*, Vid::Hash> MInstIndex;
     typedef std::unordered_map<Vid, PInst<NS>*, Vid::Hash> PInstIndex;
 
  public:
@@ -265,15 +265,15 @@ class Module : public Base {
     typedef std::unique_ptr<Net<NS>> NetPtr;
     typedef std::vector<NetPtr> NetHolder;
 
-    typedef std::unique_ptr<HierInst<NS>> HierInstPtr;
-    typedef std::vector<HierInstPtr> HierInstHolder;
+    typedef std::unique_ptr<MInst<NS>> MInstPtr;
+    typedef std::vector<MInstPtr> MInstHolder;
 
     typedef std::unique_ptr<PInst<NS>> PInstPtr;
     typedef std::vector<PInstPtr> PInstHolder;
 
     const PortHolder& getPorts() const { return _ports; }
     const NetHolder& getNets() const { return _nets; }
-    const HierInstHolder& getHierInsts() const { return _hinsts; }
+    const MInstHolder& getMInsts() const { return _minsts; }
     const PInstHolder& getPInsts() const { return _pinsts; }
 
  private:
@@ -282,8 +282,8 @@ class Module : public Base {
     PortIndex               _portIndex;
     NetHolder               _nets;
     NetIndex                _netIndex;
-    HierInstHolder          _hinsts;
-    HierInstIndex           _hinstIndex;
+    MInstHolder             _minsts;
+    MInstIndex              _minstIndex;
     PInstHolder             _pinsts;
     PInstIndex              _pinstIndex;
 };

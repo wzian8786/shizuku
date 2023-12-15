@@ -19,15 +19,15 @@ NUMBER      [1-9][0-9]*
 
 ";"[^\n]*   { ; }
 "%module"   { return T_MODULE; }
-"%hier"     { return T_HIERINST; }
+"%minst"    { return T_MINST; }
 "%pinst"    { return T_PINST; }
 "%port"     { return T_PORT; }
 "%net"      { return T_NET; }
 "%input"    { return T_INPUT; }
 "%output"   { return T_OUTPUT; }
 "%inout"    { return T_INOUT; }
-"%upport"   { return T_UPPORT; }
-"%downport" { return T_DOWNPORT; }
+"%mport"    { return T_MPORT; }
+"%iport"    { return T_IPORT; }
 "%pport"    { return T_PPORT; }
 "%process"  { return T_PROCESS; }
 "%comb"     { return T_COMB; }

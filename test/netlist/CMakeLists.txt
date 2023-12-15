@@ -8,8 +8,7 @@ file(GLOB netlist_test_files "${CMAKE_CURRENT_SOURCE_DIR}/*.cc")
 
 add_executable(netlist_tests ${netlist_test_files})
 target_link_libraries(netlist_tests ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-                                  netlist_reader
-                                  netlist_folded
+                                  netlist
                                   vid
                                   util 
                                   -pthread)
