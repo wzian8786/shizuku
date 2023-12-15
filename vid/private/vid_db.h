@@ -72,5 +72,5 @@ class VidDB {
 };
 
 template<uint32_t Namespace>
-VidDB<Namespace> VidDB<Namespace>::gSingleton;
+VidDB<Namespace> __attribute__((init_priority(200))) VidDB<Namespace>::gSingleton;
 }

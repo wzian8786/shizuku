@@ -2,6 +2,7 @@
 #include "nl_folded_obj.h"
 #include "nl_netlist.h"
 #include "nl_vertex.h"
+#include "nl_vid_db.h"
 namespace netlist {
 template<uint32_t NS>
 ElabDB<NS>::ElabDB() {}
@@ -10,6 +11,7 @@ template<uint32_t NS>
 void ElabDB<NS>::elab() {
     reset();
     genWeights();
+    genIndex();
 }
 
 template<uint32_t NS>
@@ -57,10 +59,10 @@ void ElabDB<NS>::genWeights() {
 }
 
 template<uint32_t NS>
-void ElabDB<NS>::genHIndex() {
+void ElabDB<NS>::genIndex() {
     const Module<NS>& root = Netlist<NS>::get().getRoot();
     size_t maxDfs = _dfs[root.getID()];
-    _hindex.resize(maxDfs+1);
+    _index.resize(maxDfs);
     const typename Module<NS>::MInstHolder& insts = root.getMInsts();
     for (auto it = insts.begin(); it != insts.end(); ++it) {
         const MInst<NS>& cinst = **it;
@@ -70,12 +72,26 @@ void ElabDB<NS>::genHIndex() {
 
 template<uint32_t NS>
 void ElabDB<NS>::visitInst(const MInst<NS>& inst, size_t dfs) {
-    _hindex[dfs] = inst.getID();
+    _index[dfs] = inst.getID();
     const Module<NS>& module = inst.getModule();
     const typename Module<NS>::MInstHolder& insts = module.getMInsts();
     for (auto it = insts.begin(); it != insts.end(); ++it) {
         const MInst<NS>& cinst = **it;
         visitInst(cinst, dfs+_dfsOffset[cinst.getID()]);
+    }
+}
+
+template<uint32_t NS>
+void ElabDB<NS>::printFlatten(FILE* fp) const {
+    printf("#0 %s(%s)\n", Vid(kVidSRoot).str().c_str(),
+                          Vid(kVidSRoot).str().c_str());
+    for (size_t i = 1; i < _index.size(); ++i) {
+        Assert(i < MInst<NS>::Pool::get().getMaxSize());
+        const MInst<NS>& minst = MInst<NS>::Pool::get()[_index[i]];
+        Assert(minst);
+        const Module<NS>& module = minst.getModule();
+        printf("#%lu %s(%s)\n", i, minst.getName().str().c_str(),
+                                   module.getName().str().c_str());
     }
 }
 
