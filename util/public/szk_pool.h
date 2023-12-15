@@ -207,7 +207,7 @@ class Pool {
 };
 
 template<class T, uint32_t Namespace, class Spec>
-Pool<T, Namespace, Spec> __attribute__((init_priority(101))) Pool<T, Namespace, Spec>::gSingleton;
+Pool<T, Namespace, Spec> __attribute__((init_priority(200))) Pool<T, Namespace, Spec>::gSingleton;
 template<class T, uint32_t Namespace, class Spec>
 bool Pool<T, Namespace, Spec>::gNoMore = false;
 template<class T, uint32_t Namespace, class Spec>

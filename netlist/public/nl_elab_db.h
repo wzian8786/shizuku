@@ -11,12 +11,14 @@ class ElabDB {
 
     void elab();
 
+    void printFlatten(FILE* fp) const;
+
  private:
     void reset();
     // generate weights like DFS, number of cells
     void genWeights();
     // generate index to MInst ID from DFS;
-    void genHIndex();
+    void genIndex();
 
     void visitInst(const MInst<NS>& inst, size_t dfs);
 
@@ -25,6 +27,6 @@ class ElabDB {
     std::vector<size_t>             _dfsOffset;
     std::vector<size_t>             _cellNum;
     std::vector<size_t>             _cellOffset;
-    std::vector<uint32_t>           _hindex;
+    std::vector<uint32_t>           _index;
 };
 }
