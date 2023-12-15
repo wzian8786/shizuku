@@ -11,7 +11,7 @@ class Elaborator {
     void elab();
 
  private:
-    void genWeight();
+    void genWeights();
 
  private:
     std::vector<size_t>             _dfs;
