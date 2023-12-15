@@ -227,7 +227,9 @@ PInst<NS>& Module<NS>::getPInst(Vid iname) {
 
 template<uint32_t NS>
 Process<NS>::Process(Vid name) :
-            _name(name) {
+            _name(name),
+            _numInput(0),
+            _numOutput(0) {
 }
 
 template<uint32_t NS>
@@ -241,6 +243,16 @@ bool Process<NS>::addPort(Port<NS>* port) {
     if (it == _portIndex.end()) {
         _ports.emplace_back(port);
         _portIndex[port->getName()] = port;
+        if (port->isInput()) {
+            _numInput++;
+        } else if (port->isOutput()) {
+            _numOutput++;
+        } else if (port->isInout()) {
+            _numInput++;
+            _numOutput++;
+        } else {
+            Assert(0);
+        }
         return true;
     }
     return false;

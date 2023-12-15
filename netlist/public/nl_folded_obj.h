@@ -253,21 +253,28 @@ class Module : public Base {
     void print(FILE* fp, bool indent) const;
 
  private:
+    typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
+    typedef std::unordered_map<Vid, Net<NS>*, Vid::Hash> NetIndex;
+    typedef std::unordered_map<Vid, HierInst<NS>*, Vid::Hash> HierInstIndex;
+    typedef std::unordered_map<Vid, PInst<NS>*, Vid::Hash> PInstIndex;
+
+ public:
     typedef std::unique_ptr<Port<NS>> PortPtr;
     typedef std::vector<PortPtr> PortHolder;
-    typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
 
     typedef std::unique_ptr<Net<NS>> NetPtr;
     typedef std::vector<NetPtr> NetHolder;
-    typedef std::unordered_map<Vid, Net<NS>*, Vid::Hash> NetIndex;
 
     typedef std::unique_ptr<HierInst<NS>> HierInstPtr;
     typedef std::vector<HierInstPtr> HierInstHolder;
-    typedef std::unordered_map<Vid, HierInst<NS>*, Vid::Hash> HierInstIndex;
 
     typedef std::unique_ptr<PInst<NS>> PInstPtr;
     typedef std::vector<PInstPtr> PInstHolder;
-    typedef std::unordered_map<Vid, PInst<NS>*, Vid::Hash> PInstIndex;
+
+    const PortHolder& getPorts() const { return _ports; }
+    const NetHolder& getNets() const { return _nets; }
+    const HierInstHolder& getHierInsts() const { return _hinsts; }
+    const PInstHolder& getPInsts() const { return _pinsts; }
 
  private:
     Vid                     _name;
@@ -297,6 +304,9 @@ class Process : public Base{
 
     Vid getName() const { return _name; }
 
+    uint32_t getNumOfInput() const { return _numInput; }
+    uint32_t getNumOfOutput() const { return _numOutput; }
+
     void setType(Type type);
     bool isComb() const { return testFlag(kTypeComb); }
     bool isSeq() const { return testFlag(kTypeSeq); }
@@ -316,6 +326,8 @@ class Process : public Base{
 
  private:
     Vid                     _name;
+    uint32_t                _numInput;
+    uint32_t                _numOutput;
     PortHolder              _ports;
     PortIndex               _portIndex;
 };

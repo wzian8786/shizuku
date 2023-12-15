@@ -68,6 +68,8 @@ class Cell {
              _offset{0},
              _input{0, 0, 0} {}
 
+    constexpr static size_t kInputPerCell = 3;
+
     operator bool() const { return _flags & (1 << kIndexValid); }
     bool isHead() const { return _flags & (1 << kIndexHead); }
 
@@ -88,12 +90,16 @@ class Cell {
         return addr_t(encode40(_inputh[index], _input[index]));
     }
 
+    static size_t getNumCell(size_t in, size_t out) {
+        Assert(out || in);
+        return std::max(out, (in+kInputPerCell-1)/kInputPerCell);
+    }
 
  private:
     uint8_t             _flags;
-    uint8_t             _inputh[3];
+    uint8_t             _inputh[kInputPerCell];
     uint32_t            _offset;
-    uint32_t            _input[3];
+    uint32_t            _input[kInputPerCell];
 };
 
 static_assert(sizeof(Cell) == sizeof(Head), "unexpected Cell size");

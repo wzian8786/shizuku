@@ -1,4 +1,5 @@
 #include "nl_netlist.h"
+#include <algorithm>
 #include "nl_folded_obj.h"
 namespace netlist {
 template<uint32_t NS>
@@ -10,6 +11,33 @@ void Netlist<NS>::print(FILE* fp, bool indent) const {
     Process<NS>::foreach([fp, indent](const Process<NS>& process, size_t) {
         process.print(fp, indent);
     }, 1);
+}
+
+template<uint32_t NS>
+void Netlist<NS>::topDown(std::vector<Module<NS>*>& modules) {
+    std::vector<uint32_t> visited(Module<NS>::Pool::get().getMaxSize());
+    Module<NS>* root = &this->getRoot();
+    modules.emplace_back(root);
+    size_t i = 0;
+    while (i != modules.size()) {
+        Module<NS>& cur = *modules[i];
+        const typename Module<NS>::HierInstHolder& hinsts = cur.getHierInsts();
+        for (auto it = hinsts.begin(); it != hinsts.end(); ++it) {
+            HierInst<NS>& hinst = **it;
+            Module<NS>& module = hinst.getModule();
+            if (!visited[module.getID()]) {
+                visited[module.getID()] = 1;
+                modules.push_back(&module);
+            }
+            i++;
+        }
+    }
+}
+
+template<uint32_t NS>
+void Netlist<NS>::bottomUp(std::vector<Module<NS>*>& modules) {
+    topDown(modules);
+    std::reverse(modules.begin(), modules.end());
 }
 
 template<uint32_t NS>
