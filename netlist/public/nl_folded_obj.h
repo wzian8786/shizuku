@@ -111,7 +111,7 @@ class Net : public Base {
 
     void print(FILE* fp, bool indent) const;
 
- private:
+ public:
     typedef std::vector<Port<NS>*> MPortVec;
 
     typedef std::unique_ptr<IPort<NS>> IPortPtr;
@@ -119,6 +119,10 @@ class Net : public Base {
 
     typedef std::unique_ptr<PPort<NS>> PPortPtr;
     typedef std::vector<PPortPtr> PPortHolder;
+
+    const MPortVec& getMPorts() const { return _mPorts; }
+    const IPortHolder& getIPorts() const { return _iPorts; }
+    const PPortHolder& getPPorts() const { return _pPorts; }
 
  private:
     Vid                 _name;
