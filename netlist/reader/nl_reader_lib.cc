@@ -34,7 +34,8 @@ void buildTops() {
     Module<NL_DEFAULT>::foreach([&notTop](Module<NL_DEFAULT>& module, size_t i) {
         if (module.isRoot()) return;
         if (notTop[i]) return;
-        MInst<NL_DEFAULT>* minst = new MInst<NL_DEFAULT>(module.getName(), &module);
+        uint32_t id;
+        MInst<NL_DEFAULT>* minst = new (id) MInst<NL_DEFAULT>(id, module.getName(), &module);
         module.setTop();
         bool suc = Netlist<NL_DEFAULT>::get().getRoot().addMInst(minst);
         // there is no module whose name is identical, so addMInst must success
@@ -101,7 +102,8 @@ void resolveNets() {
                     error = true;
                     continue;
                 }
-                net->addIPort(new IPort<NL_DEFAULT>(minst, cport));
+                uint32_t id;
+                net->addIPort(new (id) IPort<NL_DEFAULT>(id, minst, cport));
             }
 
             for (auto p : nc.pports) {
@@ -133,7 +135,8 @@ void resolveNets() {
                     error = true;
                     continue;
                 }
-                net->addPPort(new PPort<NL_DEFAULT>(pinst, pport));
+                uint32_t id;
+                net->addPPort(new (id) PPort<NL_DEFAULT>(id, pinst, pport));
             }
         }
     }, 0);

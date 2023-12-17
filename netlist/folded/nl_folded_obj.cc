@@ -4,8 +4,8 @@
 #include "nl_vid_db.h"
 namespace netlist {
 template<uint32_t NS>
-Port<NS>::Port(Vid name, Direction dir, const DataType* dt) :
-            _name(name), _dt(dt) {
+Port<NS>::Port(uint32_t id, Vid name, Direction dir, const DataType* dt) :
+            Base(id), _name(name), _dt(dt) {
     setFlag(dir);
 }
 
@@ -226,7 +226,8 @@ PInst<NS>& Module<NS>::getPInst(Vid iname) {
 }
 
 template<uint32_t NS>
-Process<NS>::Process(Vid name) :
+Process<NS>::Process(uint32_t id, Vid name) :
+            Base(id),
             _name(name),
             _numInput(0),
             _numOutput(0) {

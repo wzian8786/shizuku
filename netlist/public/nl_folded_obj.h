@@ -19,7 +19,7 @@ class Base {
 
     // _id is not initialized for purpose, it's actually set in
     // operator new
-    Base() : _flags(1 << kIndexValid) {}
+    explicit Base(uint32_t id) : _flags(1 << kIndexValid), _id(id) {}
     ~Base() { _flags = 0; }
 
     Base(const Base&) = delete;
@@ -31,7 +31,6 @@ class Base {
     bool testFlag(size_t shift) const { return _flags & (1 << shift); }
 
     uint32_t getID() const { return _id; }
-    void setID(uint32_t id) { _id = id; }
 
     // there are
  private:
@@ -42,12 +41,10 @@ static_assert(sizeof(Base) == Base::kNextOffset, "size mismatch");
 
 #define ManagerByPool(T) \
     typedef util::Pool<T, NS, NlPoolSpec> Pool; \
-    static void* operator new(std::size_t count) { \
+    static void* operator new(std::size_t count, uint32_t& id) { \
         Assert(count == sizeof(T)); \
-        uint32_t id = Pool::get().New(); \
-        T* m = &Pool::get()[id]; \
-        m->setID(id); \
-        return m; \
+        id = Pool::get().New(); \
+        return &Pool::get()[id]; \
     } \
     static void operator delete(void* p) {} \
     ~T() { Base::~Base(); } \
@@ -68,7 +65,7 @@ class Port : public Base {
         kPortInout,
     };
 
-    Port(Vid name, Direction dir, const DataType* dt);
+    Port(uint32_t id, Vid name, Direction dir, const DataType* dt);
     const DataType* getDataType() const { return _dt; }
 
     Vid getName() const { return _name; }
@@ -93,8 +90,8 @@ class Net : public Base {
  public:
     ManagerByPool(Net);
 
-    Net(Vid name, const DataType* dt) :
-        _name(name), _dt(dt), _module(nullptr) {}
+    Net(uint32_t id, Vid name, const DataType* dt) :
+        Base(id), _name(name), _dt(dt), _module(nullptr) {}
 
     Vid getName() const { return _name; }
     const DataType* getDataType() const { return _dt; }
@@ -138,8 +135,8 @@ class IPort : public Base {
  public:
     ManagerByPool(IPort);
 
-    IPort(MInst<NS>* inst, Port<NS>* port) :
-            _inst(inst), _port(port) {}
+    IPort(uint32_t id, MInst<NS>* inst, Port<NS>* port) :
+            Base(id), _inst(inst), _port(port) {}
 
     const MInst<NS>& getMInst() const { return *_inst; }
     const Port<NS>& getPort() const { return *_port; }
@@ -156,8 +153,8 @@ class PPort : public Base {
  public:
     ManagerByPool(PPort);
 
-    PPort(PInst<NS>* inst, Port<NS>* port) :
-            _inst(inst), _port(port) {}
+    PPort(uint32_t id, PInst<NS>* inst, Port<NS>* port) :
+            Base(id), _inst(inst), _port(port) {}
 
     const PInst<NS>& getPInst() const { return *_inst; }
     const Port<NS>& getPort() const { return *_port; }
@@ -174,8 +171,8 @@ class MInst : public Base {
  public:
     ManagerByPool(MInst);
 
-    MInst(Vid name, Module<NS>* module) :
-        _name(name), _module(module), _parent(nullptr) {}
+    MInst(uint32_t id, Vid name, Module<NS>* module) :
+            Base(id), _name(name), _module(module), _parent(nullptr) {}
 
     Vid getName() const { return _name; }
     const Module<NS>& getModule() const { return *_module; }
@@ -196,8 +193,8 @@ class PInst : public Base {
  public:
     ManagerByPool(PInst);
 
-    PInst(Vid name, Process<NS>* proc) :
-        _name(name), _proc(proc) {}
+    PInst(uint32_t id, Vid name, Process<NS>* proc) :
+        Base(id), _name(name), _proc(proc) {}
 
     Vid getName() const { return _name; }
     const Process<NS>& getProcess() const { return *_proc; }
@@ -222,7 +219,8 @@ class Module : public Base {
  public:
     ManagerByPool(Module);
 
-    explicit Module(Vid name) : _name(name) {}
+    Module(uint32_t id, Vid name) :
+            Base(id), _name(name) {}
 
     enum Flag {
         kFlagRoot = kIndexForDerived,
@@ -304,7 +302,7 @@ class Process : public Base{
         kTypeCall,
     };
 
-    Process(Vid name);
+    Process(uint32_t id, Vid name);
 
     Vid getName() const { return _name; }
 
