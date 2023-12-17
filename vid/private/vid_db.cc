@@ -5,7 +5,7 @@
 namespace vid {
 
 template<uint32_t Namespace>
-VidDB<Namespace>::VidDB() : _nextDerivedId(VT_DERIVED, 1) {}
+VidDB<Namespace>::VidDB() {}
 
 static inline bool isSpace(char c) {
     return c == ' ' || c == '\t' || c == '\n';
@@ -142,6 +142,23 @@ Vid<Namespace> VidDB<Namespace>::getPredefVid(int pid) const {
     size_t sid = (size_t) pid;
     Assert(sid < _predef.size());
     return _predef[sid];
+}
+
+template<uint32_t Namespace>
+Vid<Namespace> VidDB<Namespace>::derive(Vid<Namespace> base) {
+    std::lock_guard<std::mutex> lg(_derivedIdLock);
+    size_t id = _derivedIdVec.size();
+    if (base.getRtti() == VT_DERIVED) {
+        base = getDerivedBaseId(base.getAddr());
+    }
+    _derivedIdVec.push_back(base);
+    return Vid<Namespace>(VT_DERIVED, id);
+}
+
+template<uint32_t Namespace>
+Vid<Namespace> VidDB<Namespace>::getDerivedBaseId(size_t did) const {
+    Assert(did < _derivedIdVec.size());
+    return _derivedIdVec[did];
 }
 
 template class VidDB<VN_DEFAULT>;

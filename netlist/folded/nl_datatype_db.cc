@@ -1,25 +1,25 @@
 #include "nl_datatype_db.h"
 namespace netlist {
-const DataType* DataTypeDB::getTypeScalar() {
+const DataType& DataTypeDB::getTypeScalar() {
     if (!_scalar) {
         Scalar s;
-        _scalar = persist(&s);
+        _scalar = &persist(&s);
     }
-    return _scalar;
+    return *_scalar;
 }
 
-const DataType* DataTypeDB::getTypeReal() {
+const DataType& DataTypeDB::getTypeReal() {
     if (!_real) {
         Real s;
-        _real = persist(&s);
+        _real = &persist(&s);
     }
-    return _real;
+    return *_real;
 }
 
-const DataType* DataTypeDB::persist(DataType* dt) {
+const DataType& DataTypeDB::persist(DataType* dt) {
     auto it = _dedup.find(dt);
     if (it != _dedup.end()) {
-        return *it;
+        return **it;
     }
 
     DataType* toinsert = nullptr;
@@ -43,6 +43,6 @@ const DataType* DataTypeDB::persist(DataType* dt) {
     _holder.emplace_back(toinsert);
     _dedup.insert(toinsert); 
 
-    return toinsert;
+    return *toinsert;
 }
 }

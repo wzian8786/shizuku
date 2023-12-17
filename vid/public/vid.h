@@ -24,6 +24,7 @@ class Vid : public util::Object<56, true> {
     explicit Vid(int pid);
     explicit Vid(Base id) : Base(id) {}
 
+    Vid derive() const;
     std::string str() const;
 
     uint64_t operator *() const { return this->Base::operator*(); }

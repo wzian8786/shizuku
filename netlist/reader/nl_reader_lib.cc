@@ -35,7 +35,7 @@ void buildTops() {
         if (module.isRoot()) return;
         if (notTop[i]) return;
         uint32_t id;
-        MInst<NL_DEFAULT>* minst = new (id) MInst<NL_DEFAULT>(id, module.getName(), &module);
+        MInst<NL_DEFAULT>* minst = new (id) MInst<NL_DEFAULT>(id, module.getName(), module);
         module.setTop();
         bool suc = Netlist<NL_DEFAULT>::get().getRoot().addMInst(minst);
         // there is no module whose name is identical, so addMInst must success
@@ -54,7 +54,7 @@ void resolveNets() {
             const NetContext& nc = nit.second;
             module.addNet(net);
             net->setModule(&module);
-            const DataType* dt = net->getDataType();
+            const DataType& dt = net->getDataType();
             for (Vid pname : nc.upports) {
                 if (!module.hasPort(pname)) {
                     Logger::error("Module '%s' doesn't have port '%s'",
@@ -103,7 +103,7 @@ void resolveNets() {
                     continue;
                 }
                 uint32_t id;
-                net->addIPort(new (id) IPort<NL_DEFAULT>(id, minst, cport));
+                net->addIPort(new (id) IPort<NL_DEFAULT>(id, *minst, *cport));
             }
 
             for (auto p : nc.pports) {
@@ -136,7 +136,7 @@ void resolveNets() {
                     continue;
                 }
                 uint32_t id;
-                net->addPPort(new (id) PPort<NL_DEFAULT>(id, pinst, pport));
+                net->addPPort(new (id) PPort<NL_DEFAULT>(id, *pinst, *pport));
             }
         }
     }, 0);

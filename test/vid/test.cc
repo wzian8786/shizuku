@@ -46,6 +46,15 @@ BOOST_AUTO_TEST_CASE ( test_vid ) {
     BOOST_CHECK(vid7 == vid8);
 
     BOOST_CHECK(vid7.str() == std::string("\\**1234567 "));
+
+    Vid vid9 = vid5.derive();
+    BOOST_CHECK(vid9.str() == std::string("S$$aaa1234567_0"));
+
+    Vid vid10 = vid7.derive();
+    BOOST_CHECK(vid10.str() == std::string("\\S$$**1234567_1 "));
+
+    Vid vid11 = vid10.derive();
+    BOOST_CHECK(vid11.str() == std::string("\\S$$**1234567_2 "));
 }
 
 enum {

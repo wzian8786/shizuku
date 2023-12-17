@@ -17,8 +17,6 @@ class Base {
     };
     constexpr static size_t kNextOffset = 8;
 
-    // _id is not initialized for purpose, it's actually set in
-    // operator new
     explicit Base(uint32_t id) : _flags(1 << kIndexValid), _id(id) {}
     ~Base() { _flags = 0; }
 
@@ -49,7 +47,7 @@ static_assert(sizeof(Base) == Base::kNextOffset, "size mismatch");
     static void operator delete(void* p) {} \
     ~T() { Base::~Base(); } \
     template<typename Func> \
-    static void foreach(Func func, size_t threads) { \
+    static void foreach(Func func, size_t threads=0) { \
         util::foreach<typename T::Pool, util::TransBuilder<T>, util::ValidFilter<T>>(func, threads); \
     }
 
@@ -65,8 +63,8 @@ class Port : public Base {
         kPortInout,
     };
 
-    Port(uint32_t id, Vid name, Direction dir, const DataType* dt);
-    const DataType* getDataType() const { return _dt; }
+    Port(uint32_t id, Vid name, Direction dir, const DataType& dt);
+    const DataType& getDataType() const { return _dt; }
 
     Vid getName() const { return _name; }
 
@@ -82,7 +80,7 @@ class Port : public Base {
 
  private:
     Vid                 _name;
-    const DataType*     _dt;
+    const DataType&     _dt;
 };
 
 template<uint32_t NS>
@@ -90,11 +88,11 @@ class Net : public Base {
  public:
     ManagerByPool(Net);
 
-    Net(uint32_t id, Vid name, const DataType* dt) :
+    Net(uint32_t id, Vid name, const DataType& dt) :
         Base(id), _name(name), _dt(dt), _module(nullptr) {}
 
     Vid getName() const { return _name; }
-    const DataType* getDataType() const { return _dt; }
+    const DataType& getDataType() const { return _dt; }
 
     void setModule(Module<NS>* module) { _module = module; }
     const Module<NS>& getModule() const {
@@ -118,12 +116,15 @@ class Net : public Base {
     typedef std::vector<PPortPtr> PPortHolder;
 
     const MPortVec& getMPorts() const { return _mPorts; }
+    MPortVec& getMPorts() { return _mPorts; }
     const IPortHolder& getIPorts() const { return _iPorts; }
+    IPortHolder& getIPorts() { return _iPorts; }
     const PPortHolder& getPPorts() const { return _pPorts; }
+    PPortHolder& getPPorts() { return _pPorts; }
 
  private:
     Vid                 _name;
-    const DataType*     _dt;
+    const DataType&     _dt;
     Module<NS>*         _module;
     MPortVec            _mPorts;
     IPortHolder         _iPorts;
@@ -135,17 +136,19 @@ class IPort : public Base {
  public:
     ManagerByPool(IPort);
 
-    IPort(uint32_t id, MInst<NS>* inst, Port<NS>* port) :
+    IPort(uint32_t id, MInst<NS>& inst, Port<NS>& port) :
             Base(id), _inst(inst), _port(port) {}
 
-    const MInst<NS>& getMInst() const { return *_inst; }
-    const Port<NS>& getPort() const { return *_port; }
+    const MInst<NS>& getMInst() const { return _inst; }
+    MInst<NS>& getMInst() { return _inst; }
+    const Port<NS>& getPort() const { return _port; }
+    Port<NS>& getPort() { return _port; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    MInst<NS>*              _inst;
-    Port<NS>*               _port;
+    MInst<NS>&              _inst;
+    Port<NS>&               _port;
 };
 
 template<uint32_t NS>
@@ -153,17 +156,17 @@ class PPort : public Base {
  public:
     ManagerByPool(PPort);
 
-    PPort(uint32_t id, PInst<NS>* inst, Port<NS>* port) :
+    PPort(uint32_t id, PInst<NS>& inst, Port<NS>& port) :
             Base(id), _inst(inst), _port(port) {}
 
-    const PInst<NS>& getPInst() const { return *_inst; }
-    const Port<NS>& getPort() const { return *_port; }
+    const PInst<NS>& getPInst() const { return _inst; }
+    const Port<NS>& getPort() const { return _port; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
-    PInst<NS>*              _inst;
-    Port<NS>*               _port;
+    PInst<NS>&              _inst;
+    Port<NS>&               _port;
 };
 
 template<uint32_t NS>
@@ -171,12 +174,12 @@ class MInst : public Base {
  public:
     ManagerByPool(MInst);
 
-    MInst(uint32_t id, Vid name, Module<NS>* module) :
+    MInst(uint32_t id, Vid name, Module<NS>& module) :
             Base(id), _name(name), _module(module), _parent(nullptr) {}
 
     Vid getName() const { return _name; }
-    const Module<NS>& getModule() const { return *_module; }
-    Module<NS>& getModule() { return *_module; }
+    const Module<NS>& getModule() const { return _module; }
+    Module<NS>& getModule() { return _module; }
     const Module<NS>* getParent() const { return _parent; }
     void setParent(Module<NS>* parent) { _parent = parent; }
 
@@ -184,7 +187,7 @@ class MInst : public Base {
 
  private:
     Vid                     _name;
-    Module<NS>*             _module;
+    Module<NS>&             _module;
     Module<NS>*             _parent;
 };
 
@@ -193,25 +196,23 @@ class PInst : public Base {
  public:
     ManagerByPool(PInst);
 
-    PInst(uint32_t id, Vid name, Process<NS>* proc) :
-        Base(id), _name(name), _proc(proc) {}
+    PInst(uint32_t id, Vid name, Module<NS>& parent, Process<NS>& proc) :
+        Base(id), _name(name), _proc(proc), _parent(parent) {}
 
     Vid getName() const { return _name; }
-    const Process<NS>& getProcess() const { return *_proc; }
-    Process<NS>& getProcess() { return *_proc; }
+    const Process<NS>& getProcess() const { return _proc; }
+    Process<NS>& getProcess() { return _proc; }
 
     const Module<NS>& getParent() const {
-        Assert(_parent);
-        return *_parent;
+        return _parent;
     }
-    void setParent(Module<NS>* parent) { _parent = parent; }
 
     void print(FILE* fp, bool indent) const;
 
  private:
     Vid                     _name;
-    Process<NS>*            _proc;
-    Module<NS>*             _parent;
+    Process<NS>&            _proc;
+    Module<NS>&             _parent;
 };
 
 template<uint32_t NS>

@@ -1,4 +1,7 @@
 #include "nl_pool_db.h"
+#include <ios>
+#include <sstream>
+#include "nl_vid_db.h"
 #include "nl_folded_obj.h"
 #include "szk_foreach.h"
 namespace netlist {
@@ -77,6 +80,19 @@ const Process<NS>& PoolDB<NS>::getProcess(Vid name) const {
     auto it = _processIndex.find(name);
     Assert(it != _processIndex.end());
     return Process<NS>::Pool::get()[it->second];
+}
+
+template<uint32_t NS>
+Process<NS>& PoolDB<NS>::getMultDrive(size_t input) {
+    std::stringstream ss;
+    ss << Vid(kVidSM).str() << std::hex << input;
+    Vid name(ss.str());
+    if (!hasProcess(name)) {
+        Process<NS>* process = createProcess(name);
+        Assert(process);
+        return *process;
+    }
+    return getProcess(name);
 }
 
 template class PoolDB<NL_DEFAULT>;

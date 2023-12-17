@@ -10,10 +10,10 @@ class DataTypeDB {
                    _real(nullptr) {}
 
     // shortcut for primitive types
-    const DataType* getTypeScalar();
-    const DataType* getTypeReal();
+    const DataType& getTypeScalar();
+    const DataType& getTypeReal();
 
-    const DataType* persist(DataType* dt);
+    const DataType& persist(DataType* dt);
 
  private:
     static DataTypeDB gSingleton; 

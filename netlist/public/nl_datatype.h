@@ -28,6 +28,9 @@ class DataType {
         bool operator ()(const DataType* a, const DataType* b) const;
     };
 
+    bool operator ==(const DataType& a) const { return this == &a; }
+    bool operator !=(const DataType& a) const { return this != &a; }
+
     virtual size_t hash() const = 0;
 
     virtual bool isPrimitive() const { return false; }

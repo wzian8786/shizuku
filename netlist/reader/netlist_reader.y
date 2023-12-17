@@ -88,6 +88,7 @@ module
             gCtx.unresolvedModules.erase(name);
         } else {
             gCtx.module = Netlist::get().createModule(name);
+            Assert(gCtx.module);
         }
         gCtx.resolvedModules.emplace(name, gCtx.module);
     } module_items ')' {
@@ -105,6 +106,7 @@ module
             gCtx.unresolvedModules.erase(name);
         } else {
             gCtx.module = Netlist::get().createModule(name);
+            Assert(gCtx.module);
         }
         netlist::reader::gNets.emplace(gCtx.module, std::move(gCtx.nets));
         gCtx.resolvedModules.emplace(name, gCtx.module);
@@ -215,11 +217,12 @@ minst
                 module = it2->second;
             } else {
                 module = Netlist::get().createModule(modName);
+                Assert(module);
                 gCtx.unresolvedModules.emplace(modName, module);
             }
         }
         uint32_t id;
-        MInst* minst = new (id) MInst(id, $3, module); 
+        MInst* minst = new (id) MInst(id, $3, *module); 
         if (!gCtx.module->addMInst(minst)) {
             Logger::fatal("Duplicate module instance '%s'", minst->getName().str().c_str());
         }
@@ -240,15 +243,16 @@ pinst
                 process = it2->second;
             } else {
                 process = Netlist::get().createProcess(procName);
+                Assert(process);
                 gCtx.unresolvedProcesses.emplace(procName, process);
             }
         }
+        Assert(gCtx.module);
         uint32_t id;
-        PInst* pinst = new (id) PInst(id, $3, process);
+        PInst* pinst = new (id) PInst(id, $3, *gCtx.module, *process);
         if (!gCtx.module->addPInst(pinst)) {
             Logger::fatal("Duplicate process instance '%s'", pinst->getName().str().c_str());
         }
-        pinst->setParent(gCtx.module);
     }
     ;
 
@@ -264,6 +268,7 @@ process
             gCtx.unresolvedProcesses.erase(name);
         } else {
             gCtx.process = Netlist::get().createProcess(name);
+            Assert(gCtx.process);
         }
         gCtx.resolvedProcesses.emplace(name, gCtx.process);
     } process_type process_items')' {

@@ -48,6 +48,9 @@ class VidDB {
     void predef(const std::vector<std::pair<int, std::string> >& pd);
     Vid<Namespace> getPredefVid(int pid) const;
 
+    Vid<Namespace> derive(Vid<Namespace> base);
+    Vid<Namespace> getDerivedBaseId(size_t did) const;
+
  private:
     typedef std::pair<std::string, bool> NormalizeInfo;
     NormalizeInfo normalize(const char* s, bool force) const;
@@ -57,18 +60,17 @@ class VidDB {
  private:
 
     typedef std::unordered_map<std::string, uint64_t> StrMap;
-    typedef util::PArray<std::unique_ptr<const char>, 24> StrVec;
     typedef util::PArray<Vid<Namespace>, 24> VidVec;
 
     static VidDB                    gSingleton;
     StrMap                          _longIdMap;
 
     VidVec                          _derivedIdVec;
-    Vid<Namespace>                  _nextDerivedId;
 
     std::vector<Vid<Namespace>>     _predef;
 
     std::mutex                      _lock;
+    std::mutex                      _derivedIdLock;
 };
 
 template<uint32_t Namespace>
