@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE ( test_datatype ) {
     DataTypeDB dtdb;
 
     Scalar s1;
-    const DataType* s2s = dtdb.persist(&s1);
+    const DataType& s2s = dtdb.persist(&s1);
     BOOST_CHECK(s2s == dtdb.getTypeScalar());
 
     DataType::Equal equal;
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE ( test_datatype ) {
 
     BOOST_CHECK(equal(&s1, &s2));
     BOOST_CHECK(!equal(&s1, &s3));
-    BOOST_CHECK(equal(&s3, dtdb.getTypeReal()));
+    BOOST_CHECK(equal(&s3, &dtdb.getTypeReal()));
 
     PackedArray p1(-3, 0, false);
     PackedArray p2(-3, 0, false);

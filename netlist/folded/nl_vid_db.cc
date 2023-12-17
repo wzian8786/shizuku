@@ -6,6 +6,7 @@ namespace netlist {
 PreVidDB::PreVidDB() {
     static std::vector<std::pair<int, std::string> > pd = {
         { kVidSRoot, "S$Root" },
+        { kVidSM, "S$M" },
     };
     Vid::predef(pd);
 }

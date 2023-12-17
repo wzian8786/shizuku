@@ -14,7 +14,7 @@ class ElabDB {
     void printFlatten(FILE* fp) const;
 
  private:
-    void reset();
+    void resetWeights();
 
     // generate weights like DFS, number of cells
     void genWeights(const std::vector<Module<NS>*>& topo);

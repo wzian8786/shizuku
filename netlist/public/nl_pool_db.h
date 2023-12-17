@@ -20,6 +20,8 @@ class PoolDB {
     Process<NS>& getProcess(Vid name);
     const Process<NS>& getProcess(Vid name) const;
 
+    Process<NS>& getMultDrive(size_t input);
+
     void clear();
 
  private:

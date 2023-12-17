@@ -51,6 +51,24 @@ std::string Vid<Namespace>::str() const {
         ss << ' ';
         break;
 
+    case VT_DERIVED: {
+        std::string baseStr = VidDB<Namespace>::getConst().getDerivedBaseId(getAddr()).str();
+        bool escape = false;
+        size_t len = baseStr.length();
+        if (len > 2 && baseStr[0] == '\\' && baseStr[len-1] == ' ') {
+            escape = true;
+            baseStr = baseStr.substr(1, len-2);
+        }
+        if (escape) {
+            ss << '\\';
+        }
+        ss << "S$$" << baseStr << '_' << getAddr();
+        if (escape) {
+            ss << ' ';
+        }
+        break;
+    }
+
     default:
         Assert(0);
     }
@@ -60,6 +78,11 @@ std::string Vid<Namespace>::str() const {
 template<uint32_t Namespace>
 void Vid<Namespace>::predef(const std::vector<std::pair<int, std::string> >& pd) {
     VidDB<Namespace>::get().predef(pd);
+}
+
+template<uint32_t Namespace>
+Vid<Namespace> Vid<Namespace>::derive() const {
+    return VidDB<Namespace>::get().derive(*this);
 }
 
 template class Vid<VN_DEFAULT>;

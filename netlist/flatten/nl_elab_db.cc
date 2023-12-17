@@ -61,8 +61,7 @@ class ElabAnnotator {
         _portAnno(Port<NS>::Pool::get().getMaxSize()),
         _netAnno(Net<NS>::Pool::get().getMaxSize()),
         _portNexuses(Module<NS>::Pool::get().getMaxSize()),
-        _netNexuses(Module<NS>::Pool::get().getMaxSize()),
-        _multDrives(Module<NS>::Pool::get().getMaxSize()) {}
+        _netNexuses(Module<NS>::Pool::get().getMaxSize()) {}
 
  private:
     struct Nexus {
@@ -89,18 +88,12 @@ class ElabAnnotator {
         const IPort<NS>&                port;
         std::vector<NetNexus*>    nets;
     };
-    struct MultDrive {
-        MultDrive(const Net<NS>& n, size_t d) :
-            net(n), numDrive(d) {}
-        const Net<NS>&                  net;
-        size_t                          numDrive;
-    };
+
     typedef std::shared_ptr<Nexus> NexusPtr;
     typedef std::vector<std::shared_ptr<Nexus>> Annotation;
     typedef std::vector<std::vector<std::unique_ptr<NetNexus>>> NetNexusVec;
     typedef std::vector<std::vector<std::unique_ptr<IPortNexus>>> IPortNexusVec;
     typedef std::unordered_map<Nexus*, IPortNexus*> IPortNexusIndex;
-    typedef std::vector<std::vector<MultDrive>> MultDriveVec;
     
     void annotateNet(const Net<NS>& net, IPortNexusIndex& portNexusIndex) {
         util::Logger::debug("(elab) annotating net %s(%u)",
@@ -137,10 +130,6 @@ class ElabAnnotator {
             }
         }
 
-        if (numOfDrive > 1) {
-            _multDrives[net.getModule().getID()].emplace_back(net, numOfDrive);
-        }
-    
         if (!hasSibling) {
             const typename Net<NS>::MPortVec& mports = net.getMPorts();
             if (mports.empty()) {
@@ -211,29 +200,94 @@ class ElabAnnotator {
     Annotation                          _netAnno;
     IPortNexusVec                       _portNexuses;
     NetNexusVec                         _netNexuses;
-    MultDriveVec                        _multDrives;
+};
+
+template<uint32_t NS>
+class MultDriveCreator {
+ public:
+    MultDriveCreator() :
+        _hasDrive(Port<NS>::Pool::get().getMaxSize()) {}
+
+    void createMultDriveForNet(Module<NS>& module, Net<NS>& net) {
+        util::Logger::debug("(elab) creating mult-drive for net %s(%u)",
+                    net.getName().str().c_str(), module.getID());
+        const typename Net<NS>::IPortHolder& iports = net.getIPorts();
+        const typename Net<NS>::MPortVec& mports = net.getMPorts();
+        const typename Net<NS>::PPortHolder& pports = net.getPPorts();
+        std::vector<const IPort<NS>*> diports;
+        std::vector<const Port<NS>*> dmports;
+        std::vector<const PPort<NS>*> dpports;
+        size_t io = 0;
+        for (const auto& ptr : iports) {
+            const Port<NS>& port = ptr->getPort();
+            if (port.isOutput() || port.isInout()) {
+                diports.emplace_back(ptr.get());
+                if (port.isInout()) io++;
+            }
+        }
+        for (const Port<NS>* port : mports) {
+            if (port->isInput() || port->isInout()) {
+                dmports.emplace_back(port);
+                if (port->isInout()) io++;
+            }
+        }
+        for (const auto& ptr : pports) {
+            const Port<NS>& port = ptr->getPort();
+            if (port.isOutput() || port.isInout()) {
+                dpports.emplace_back(ptr.get());
+                if (port.isInout()) io++;
+            }
+        }
+        size_t drive = diports.size() + dmports.size() + dpports.size();
+        if (drive > 1 && (drive != 2 || io != 2)) {
+            Process<NS>& process = Netlist<NS>::get().getMultDrive(drive);
+            uint32_t id;
+            PInst<NS>* pinst = new (id) PInst<NS>(id, process.getName().derive(), module, process);
+            (void) pinst;
+        }
+    }
+
+    void createMultDrive(const std::vector<Module<NS>*>& topo) {
+        for (auto module : topo) {
+            const typename Module<NS>::NetHolder& nets = module->getNets();
+            util::Logger::debug("(elab) creating mult-drive for module %s(%u)",
+                    module->getName().str().c_str(), module->getID());
+            for (auto& itn : nets) {
+                createMultDriveForNet(*module, *itn);
+            }
+        }
+    }
+
+ private:
+    std::vector<uint8_t>                _hasDrive;
 };
 
 template<uint32_t NS>
 ElabDB<NS>::ElabDB() {}
+
 template<uint32_t NS>
 void ElabDB<NS>::elab() {
+    // 1. topologic sort modules from bottom to top
     std::vector<Module<NS>*> topo;
     Netlist<NS>::get().bottomUp(topo);
 
-    reset();
+    // 2. create multiple drive
+    MultDriveCreator<NS> mdc;
+    mdc.createMultDrive(topo);
 
-    ElabAnnotator<NS> anno;
-    anno.annotate(topo);
-
+    // 3. calculate the weights
     genWeights(topo);
+
+    // 4. generate index for DFS
     genIndex();
 
-    //annotate(topo, portAnno, netAnno); 
+    // 5. 
+    ElabAnnotator<NS> anno;
+    anno.annotate(topo);
 }
 
 template<uint32_t NS>
-void ElabDB<NS>::reset() {
+void ElabDB<NS>::resetWeights() {
     _dfs.clear();
     _dfsOffset.clear();
     _cellNum.clear();
@@ -246,6 +300,7 @@ void ElabDB<NS>::reset() {
 
 template<uint32_t NS>
 void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
+    resetWeights();
     for (auto mod : topo) {
         const typename Module<NS>::MInstHolder& insts = mod->getMInsts();
         const typename Module<NS>::PInstHolder& pinsts = mod->getPInsts();
