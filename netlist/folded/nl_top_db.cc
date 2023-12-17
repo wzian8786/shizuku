@@ -3,8 +3,9 @@
 #include "nl_vid_db.h"
 namespace netlist {
 template<uint32_t NS>
-TopDB<NS>::TopDB() :
-    _root(new Module<NS>(Vid(kVidSRoot))) {
+TopDB<NS>::TopDB() {
+    uint32_t id;
+    _root = new (id) Module<NS>(id, Vid(kVidSRoot));
     _root->setRoot();
 }
 

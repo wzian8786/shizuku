@@ -1,25 +1,235 @@
 #include "nl_elab_db.h"
+#include <memory>
+#include <unordered_set>
+#include <unordered_map>
 #include "nl_folded_obj.h"
 #include "nl_netlist.h"
 #include "nl_vertex.h"
 #include "nl_vid_db.h"
+#include "szk_log.h"
 namespace netlist {
 template<uint32_t NS>
-ElabDB<NS>::ElabDB() {}
+// The basic idea of the algorithms is that:
+// 1. For each net, if it doesn't connect to any MPort(module port), means 
+//    all the driver & readers must be in the sub-tree of current module.
+//    And the cell offset can be calculated.
+//    This information is annotated on the net, no matter where the current
+//    module is instantiated, this information can always be reused.
+// 2. If a net connects to any module port, means it's impossible to find all
+//    the driver & readers within the subtree of current module. Still we collect
+//    the driver & readers already known, and annotate the information on the
+//    module port. So upper module can use this information.
+//
+// The annotation actually is done in folded view, and elaboration uses the
+// annotation to create driver & readers connection is flatten view. In this way
+// it is not necessary to searching driver & readers agian & again when elaboration 
+// transverses the hierarchical tree. And this algorithms works perfectly as it 
+// benefits both memory usage and elaboration performance.
+// 
+// But there is an exception.
+// If a net is connected to more than one module ports. And in the upper module,
+// The nets connected to these ports can't see each other, they do not know the
+// existence of their siblings. The net of such case may believe it already knows
+// all the driver & readers connected together, but the fact is it only finds
+// driver & readers in its scope, not in its siblings' scope. 
+// 
+// So we have to fix this issue manually.
+// 1. We use class Nexus to describe driver & readers connected. 
+// 2. And the are 2 kinds of Nexus:
+//    a. IPortNexus is used to describe driver & readers connected to a bunch of 
+//       IPorts which actually connected together. Please note IPort with the
+//       same module are always merged into one IPortNexus.
+//    b. NetNexus is used to describe driver & readers connected to one Net. As
+//       mentioned Net can't see its sibling directly, so NetNexuses in one module
+//       which actually connected together are not merged.
+//    
+// The fix works as below:
+// 1. For each IPortNexus, find all the NetNexuses it connected to.
+// 2. For each NetNexus, find all the IPortNexuses it connected to.
+// 3. Use the information of (1) (2), find all the IPortNexuses & NetNexuses 
+//    connected together. The number of both IPortNexus & NetNexus may be more than
+//    One. This is because: 
+//    a. NetNexus can't see it's sibling, its easy to understand.
+//    b. IPortNexus is always merged together in one sub instance, but IPortNexuses
+//       from different sub instance are not.
+//    These IPortNexuses & NetNexuses are merged together, and called a link.
+// 4. For each link, it works just as normal Nexus. If it connected to module ports,
+//    annotate it on module ports, otherwise annotate it on the nets of this link. 
+class ElabAnnotator {
+ public:
+    ElabAnnotator() :
+        _portAnno(Port<NS>::Pool::get().getMaxSize()),
+        _netAnno(Net<NS>::Pool::get().getMaxSize()),
+        _portNexuses(Module<NS>::Pool::get().getMaxSize()),
+        _netNexuses(Module<NS>::Pool::get().getMaxSize()),
+        _multDrives(Module<NS>::Pool::get().getMaxSize()) {}
 
+ private:
+    struct Nexus {
+        Nexus() : hasSibling(false), hasDriver(false), driver(0) {}
+        ~Nexus() {}
+        bool                            hasSibling;
+        bool                            hasDriver;
+        uint64_t                        driver;
+        std::vector<uint64_t>           readers;
+    };
+    struct IPortNexus;
+    struct NetNexus;
+    struct NetNexus {
+        NetNexus(Nexus* nx, const Net<NS>& n) :
+                 nexus(nx), net(n) {}
+        Nexus*                          nexus;
+        const Net<NS>&                  net;
+        std::vector<const IPortNexus*>  ports;
+    };
+    struct IPortNexus {
+        IPortNexus(Nexus* nx, const IPort<NS>& p) :
+                   nexus(nx), port(p) {}
+        Nexus*                          nexus;
+        const IPort<NS>&                port;
+        std::vector<NetNexus*>    nets;
+    };
+    struct MultDrive {
+        MultDrive(const Net<NS>& n, size_t d) :
+            net(n), numDrive(d) {}
+        const Net<NS>&                  net;
+        size_t                          numDrive;
+    };
+    typedef std::shared_ptr<Nexus> NexusPtr;
+    typedef std::vector<std::shared_ptr<Nexus>> Annotation;
+    typedef std::vector<std::vector<std::unique_ptr<NetNexus>>> NetNexusVec;
+    typedef std::vector<std::vector<std::unique_ptr<IPortNexus>>> IPortNexusVec;
+    typedef std::unordered_map<Nexus*, IPortNexus*> IPortNexusIndex;
+    typedef std::vector<std::vector<MultDrive>> MultDriveVec;
+    
+    void annotateNet(const Net<NS>& net, IPortNexusIndex& portNexusIndex) {
+        util::Logger::debug("(elab) annotating net %s(%u)",
+                            net.getName().str().c_str(), net.getID());
+        NexusPtr nexus(new Nexus());
+        NetNexus* netNexus = nullptr;
+        bool hasSibling = false;
+        size_t numOfDrive = 0;
+        const typename Net<NS>::IPortHolder& iports = net.getIPorts();
+        uint32_t moduleID = net.getModule().getID();
+        for (auto& ptr : iports) {
+            const IPort<NS>& iport = *ptr;
+            Assert(iport.getPort().getID() < _portAnno.size());
+            NexusPtr pnexus = _portAnno[iport.getPort().getID()];
+            // Port may not connected to any net, then is not annotated
+            if (!pnexus) continue;
+            if (pnexus->hasSibling) {
+                if (!netNexus) {
+                    netNexus = new NetNexus(nexus.get(), net);
+                    _netNexuses[moduleID].emplace_back(netNexus);
+                }
+                auto dit = portNexusIndex.find(pnexus.get());
+                if (dit == portNexusIndex.end()) {
+                    IPortNexus* portNexus = new IPortNexus(pnexus.get(), iport);
+                    _portNexuses[moduleID].emplace_back(portNexus);
+                    dit = portNexusIndex.emplace(pnexus.get(), portNexus).first;
+                }
+                IPortNexus* portNexus = dit->second;
+                portNexus->nets.emplace_back(netNexus);
+                netNexus->ports.emplace_back(portNexus);
+                hasSibling = true;
+            } else if (pnexus->hasDriver) {
+                numOfDrive++;
+            }
+        }
+
+        if (numOfDrive > 1) {
+            _multDrives[net.getModule().getID()].emplace_back(net, numOfDrive);
+        }
+    
+        if (!hasSibling) {
+            const typename Net<NS>::MPortVec& mports = net.getMPorts();
+            if (mports.empty()) {
+                _netAnno[net.getID()] = nexus;
+            } else {
+                nexus->hasSibling = mports.size() > 1;
+                for (auto& ptr : mports) {
+                    _portAnno[ptr->getID()] = nexus;
+                    util::Logger::debug("(elab) annotating port %s(%u)",
+                                ptr->getName().str().c_str(), ptr->getID());
+                } 
+            }
+        }
+    }
+
+    void mergeSiblings(const Module<NS>& module) {
+        const std::vector<std::unique_ptr<NetNexus>>& netNexuses =
+                _netNexuses[module.getID()];
+        std::unordered_set<const NetNexus*> visited;
+        for (const auto& it : netNexuses) {
+            const NetNexus& netNexus = *it;
+            if (visited.find(&netNexus) != visited.end()) continue;
+            std::vector<const NetNexus*> todo = { &netNexus };
+            std::vector<const Net<NS>*> nets;
+            std::vector<const Port<NS>*> mports;
+            std::unordered_set<Nexus*> link;
+            while (!todo.empty()) {
+                const NetNexus* nexus = todo.back();
+                todo.pop_back();
+                Assert(visited.find(nexus) != visited.end());
+                visited.emplace(nexus);
+    
+                const Net<NS>& net = netNexus.net;
+                nets.emplace_back(&net);
+                link.emplace(netNexus.nexus);
+    
+                const typename Net<NS>::MPortVec& mportVec = net.getMPorts();
+                for (const auto& ptr : mportVec) {
+                    mports.emplace_back(ptr);
+                }
+    
+                for (const auto& portNexus : netNexus.ports) {
+                    link.emplace(portNexus->nexus);
+                    for (const auto& n : portNexus->nets) {
+                        todo.emplace_back(n);
+                    }
+                }
+            }
+        }
+    }
+
+ public:
+    void annotate(const std::vector<Module<NS>*>& topo) {
+        for (auto module : topo) {
+            const typename Module<NS>::NetHolder& nets = module->getNets();
+            util::Logger::debug("(elab) annotating module %s(%u)",
+                    module->getName().str().c_str(), module->getID());
+            IPortNexusIndex portNexusIndex;
+            for (auto& itn : nets) {
+                annotateNet(*itn, portNexusIndex);
+            }
+            mergeSiblings(*module);
+        }
+    }
+
+ private:
+    Annotation                          _portAnno;
+    Annotation                          _netAnno;
+    IPortNexusVec                       _portNexuses;
+    NetNexusVec                         _netNexuses;
+    MultDriveVec                        _multDrives;
+};
+
+template<uint32_t NS>
+ElabDB<NS>::ElabDB() {}
 template<uint32_t NS>
 void ElabDB<NS>::elab() {
     std::vector<Module<NS>*> topo;
     Netlist<NS>::get().bottomUp(topo);
-    Annotation portAnno(Port<NS>::Pool::get().getMaxSize());
-    Annotation netAnno(Net<NS>::Pool::get().getMaxSize());
 
     reset();
+
+    ElabAnnotator<NS> anno;
+    anno.annotate(topo);
 
     genWeights(topo);
     genIndex();
 
-    annotate(topo, portAnno, netAnno); 
+    //annotate(topo, portAnno, netAnno); 
 }
 
 template<uint32_t NS>
@@ -96,159 +306,6 @@ void ElabDB<NS>::printFlatten(FILE* fp) const {
         const Module<NS>& module = minst.getModule();
         printf("#%lu %s(%s)\n", i, minst.getName().str().c_str(),
                                    module.getName().str().c_str());
-    }
-}
-
-template<uint32_t NS>
-void ElabDB<NS>::mergeLink(Annotation& portAnno,
-                                 Annotation& netAnno,
-                                 NetNexusIndex& netIndex,
-                                 IPortNexusIndex& portIndex) {
-    std::unordered_set<const Nexus*> visited;
-    for (auto it = netIndex.begin(); it != netIndex.end(); ++it) {
-        if (visited.find(it->first) != visited.end()) continue;
-        std::vector<const Nexus*> todo = { it->first };
-        std::vector<const Net<NS>*> nets;
-        std::vector<const Port<NS>*> mports;
-        while (!todo.empty()) {
-            const Nexus* nexus = todo.back();
-            todo.pop_back();
-            visited.emplace(nexus);
-            Assert(visited.find(nexus) != visited.end());
-
-            auto nit = netIndex.find(nexus);
-            Assert(nit != netIndex.end());
-            const Net<NS>& net = *nit->second.first;
-            nets.emplace_back(&net);
-
-            const typename Net<NS>::MPortVec& mportVec = net.getMPorts();
-            for (const auto& ptr : mportVec) {
-                mports.emplace_back(ptr);
-            }
-
-            const NetNexus& netNexus = nit->second.second;
-            for (const auto& p : netNexus) {
-                const Nexus* pnexus = p.first.get();
-                auto pit = portIndex.find(pnexus);
-                Assert(pit != portIndex.end());
-
-                const IPortNexus& portNexus = pit->second.second;
-                for (const auto& n : portNexus) {
-                    todo.emplace_back(n.first.get());
-                }
-            }
-        }
-    }
-}
-
-template<uint32_t NS>
-void ElabDB<NS>::annotateNet(const Net<NS>& net,
-                             Annotation& portAnno,
-                             Annotation& netAnno,
-                             NetNexusIndex& netIndex,
-                             IPortNexusIndex& portIndex,
-                             VisitedIPorts& visitedIPorts) {
-    NexusPtr nexus(new Nexus());
-
-    bool needMerge = false;
-    const typename Net<NS>::IPortHolder& iports = net.getIPorts();
-    NetNexus ninfo;
-    for (auto& ptr : iports) {
-        const IPort<NS>& iport = *ptr;
-        Assert(iport.getPort().getID() < portAnno.size());
-        NexusPtr pnexus = portAnno[iport.getID()];
-        visitedIPorts.insert(iport.getID());
-        if (pnexus->needMerge) {
-            auto dit = portIndex.find(pnexus.get());
-            if (dit == portIndex.end()) {
-                dit = portIndex.emplace(pnexus.get(), std::make_pair(&iport, IPortNexus())).first;
-            }
-            dit->second.second.emplace_back(nexus, &net);
-            needMerge = true;
-            ninfo.emplace_back(pnexus, &iport);
-        }
-    }
-
-    if (!needMerge) {
-        const typename Net<NS>::MPortVec& mports = net.getMPorts();
-        if (mports.empty()) {
-            netAnno[net.getID()] = nexus;
-        } else {
-            nexus->needMerge = mports.size() > 1;
-            for (auto& ptr : mports) {
-                portAnno[ptr->getID()] = nexus;
-            } 
-        }
-    } else {
-        netIndex.emplace(nexus.get(), std::make_pair(&net, std::move(ninfo)));
-    }
-}
-
-// The basic idea of the algorithms is that:
-// 1. For each net, if it doesn't connect to any MPort(module port), means 
-//    all the driver & readers must be in the sub-tree of current module.
-//    And the cell offset can be calculated.
-//    This information is annotated on the net, no matter where the current
-//    module is instantiated, this information can always be reused.
-// 2. If a net connects to any module port, means it's impossible to find all
-//    the driver & readers within the subtree of current module. Still we collect
-//    the driver & readers already known, and annotate the information on the
-//    module port. So upper module can use this information.
-//
-// The annotation actually is done in folded view, and elaboration uses the
-// annotation to create driver & readers connection is flatten view. In this way
-// it is not necessary to searching driver & readers agian & again when elaboration 
-// transverses the hierarchical tree. And this algorithms works perfectly as it 
-// benefits both memory usage and elaboration performance.
-// 
-// But there is an exception.
-// If a net is connected to more than one module ports. And in the upper module,
-// The nets connected to these ports can't see each other, they do not know the
-// existence of their sibling. The net is such case may believe it already knows
-// all the driver & readers connected together, but the fact is it only finds
-// driver & readers in its scope, not its siblings' scope. 
-// 
-// So we have to fix this issue manually.
-// 1. We use class Nexus to describe driver & readers connected. 
-// 2. And the are 2 kinds of Nexus:
-//    a. IPortNexus is used to describe driver & readers connected to a bunch of 
-//       IPorts which actually connected together. Please note IPort with the
-//       same module are always merged into one IPortNexus.
-//    b. NetNexus is used to describe driver & readers connected to one Net. As
-//       mentioned Net can't see its sibling directly, so NetNexuses in one module
-//       which actually connected together are not merged.
-//    
-// The fix works as below:
-// 1. For each IPortNexus, find all the NetNexuses it connected to.
-// 2. For each NetNexus, find all the IPortNexuses it connected to.
-// 3. Use the information of (1) (2), find all the IPortNexuses & NetNexuses 
-//    connected together. The number of both IPortNexus & NetNexus may be more than
-//    One. This is because: 
-//    a. NetNexus can't see it's sibling, its easy to understand.
-//    b. IPortNexus is always merged together in one sub instance, but IPortNexuses
-//       from different sub instance are not.
-//    These IPortNexuses & NetNexuses are merged together, and called a link.
-// 4. For each link, it works just as normal Nexus. If it connected to module ports,
-//    annotate it on module ports, otherwise annotate it on the nets of this link. 
-template<uint32_t NS>
-void ElabDB<NS>::annotate(const std::vector<Module<NS>*>& topo,
-                          Annotation& portAnno,
-                          Annotation& netAnno) {
-    for (auto module : topo) {
-        const typename Module<NS>::NetHolder& nets = module->getNets();
-        VisitedIPorts visitedIPorts;
-        NetNexusIndex netIndex;
-        IPortNexusIndex portIndex;
-        for (auto& itn : nets) {
-            annotateNet(*itn, portAnno, netAnno, netIndex, portIndex, visitedIPorts);
-        }
-        mergeLink(portAnno, netAnno, netIndex, portIndex);
-
-        const typename Module<NS>::MInstHolder& insts = module->getMInsts();
-        for (auto& it : insts) {
-            MInst<NS>& inst = *it;
-            (void) inst;
-        }
     }
 }
 

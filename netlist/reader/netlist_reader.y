@@ -87,7 +87,7 @@ module
             gCtx.module = it->second;
             gCtx.unresolvedModules.erase(name);
         } else {
-            gCtx.module = new Module(name);
+            gCtx.module = Netlist::get().createModule(name);
         }
         gCtx.resolvedModules.emplace(name, gCtx.module);
     } module_items ')' {
@@ -104,7 +104,7 @@ module
             gCtx.module = it->second;
             gCtx.unresolvedModules.erase(name);
         } else {
-            gCtx.module = new Module(name);
+            gCtx.module = Netlist::get().createModule(name);
         }
         netlist::reader::gNets.emplace(gCtx.module, std::move(gCtx.nets));
         gCtx.resolvedModules.emplace(name, gCtx.module);
@@ -138,7 +138,8 @@ direction
 
 port
     : '(' T_PORT T_ID direction')' {
-        Port* port = new Port($3, gCtx.direction, Netlist::get().getTypeScalar());
+        uint32_t id;
+        Port* port = new (id) Port(id, $3, gCtx.direction, Netlist::get().getTypeScalar());
         if (gCtx.module) {
             Assert(!gCtx.process);
             if (!gCtx.module->addPort(port)) {
@@ -190,11 +191,13 @@ conn_items
 
 net 
     : '(' T_NET T_ID {
-        Net* net = new Net($3, Netlist::get().getTypeScalar());
+        uint32_t id;
+        Net* net = new (id) Net(id, $3, Netlist::get().getTypeScalar());
         gCtx.nets.emplace_back(net, NetContext());
     } conn_items ')'
     | '(' T_NET T_ID ')' {
-        Net* net = new Net($3, Netlist::get().getTypeScalar());
+        uint32_t id;
+        Net* net = new (id) Net(id, $3, Netlist::get().getTypeScalar());
         gCtx.nets.emplace_back(net, NetContext());
     }
     ;
@@ -211,11 +214,12 @@ minst
             if (it2 != gCtx.unresolvedModules.end()) {
                 module = it2->second;
             } else {
-                module = new Module(modName);
+                module = Netlist::get().createModule(modName);
                 gCtx.unresolvedModules.emplace(modName, module);
             }
         }
-        MInst* minst = new MInst($3, module); 
+        uint32_t id;
+        MInst* minst = new (id) MInst(id, $3, module); 
         if (!gCtx.module->addMInst(minst)) {
             Logger::fatal("Duplicate module instance '%s'", minst->getName().str().c_str());
         }
@@ -235,11 +239,12 @@ pinst
             if (it2 != gCtx.unresolvedProcesses.end()) {
                 process = it2->second;
             } else {
-                process = new Process(procName);
+                process = Netlist::get().createProcess(procName);
                 gCtx.unresolvedProcesses.emplace(procName, process);
             }
         }
-        PInst* pinst = new PInst($3, process);
+        uint32_t id;
+        PInst* pinst = new (id) PInst(id, $3, process);
         if (!gCtx.module->addPInst(pinst)) {
             Logger::fatal("Duplicate process instance '%s'", pinst->getName().str().c_str());
         }
@@ -258,7 +263,7 @@ process
             gCtx.process = it->second;
             gCtx.unresolvedProcesses.erase(name);
         } else {
-            gCtx.process = new Process(name);
+            gCtx.process = Netlist::get().createProcess(name);
         }
         gCtx.resolvedProcesses.emplace(name, gCtx.process);
     } process_type process_items')' {

@@ -1,8 +1,25 @@
 #include "szk_log.h"
 #include <stdarg.h>
 #include <cstdlib>
+#include <cstring>
 namespace util {
 Logger __attribute__((init_priority(200))) Logger::gLogger;
+Logger::Logger() : _level(kInfo), _out(stdout), _error(stderr) {
+    const char* env = getenv("SHIZUKU_LOG_LEVEL");
+    if (env) {
+        if (!strcmp(env, "debug")) {
+            _level = kDebug;
+        } else if (!strcmp(env, "note")) {
+            _level = kNote;
+        } else if (!strcmp(env, "info")) {
+            _level = kInfo;
+        } else if (!strcmp(env, "warning")) {
+            _level = kWarning;
+        }
+    }
+}
+                   
+#ifndef NDEBUG
 void Logger::debug(const char* fmt, ...) {
     if (gLogger._level == kDebug) {
         fprintf(gLogger._out, "%s", "[ DEBUG ]: ");
@@ -13,6 +30,7 @@ void Logger::debug(const char* fmt, ...) {
         fputc('\n', gLogger._out);
     }
 }
+#endif
 
 void Logger::note(const char* fmt, ...) {
     if (gLogger._level <= kNote) {

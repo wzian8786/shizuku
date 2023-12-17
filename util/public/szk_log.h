@@ -11,14 +11,18 @@ class Logger {
         kNoWarning,
     };
 
-    Logger() : _level(kInfo), _out(stdout), _error(stderr) {}
+    Logger();
     ~Logger() { fflush(_out); }
 
     static void setLevel(Level level) { gLogger._level = level; }
     static void setOutFd(FILE* out) { gLogger._out = out; }
     static void setErrorFd(FILE* error) { gLogger._error = error; }
 
+#ifdef NDEBUG
+    static inline void debug(const char*, ...) {}
+#else
     static void debug(const char*, ...);
+#endif
     static void note(const char*, ...);
     static void info(const char*, ...);
     static void warning(const char*, ...);
