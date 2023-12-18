@@ -83,13 +83,23 @@ const Process<NS>& PoolDB<NS>::getProcess(Vid name) const {
 }
 
 template<uint32_t NS>
-Process<NS>& PoolDB<NS>::getMultDrive(size_t input) {
+Process<NS>& PoolDB<NS>::getMultDrive(size_t input, size_t io) {
     std::stringstream ss;
     ss << Vid(kVidSM).str() << std::hex << input;
+    if (io) {
+        ss << "_" << io;
+    }
     Vid name(ss.str());
     if (!hasProcess(name)) {
         Process<NS>* process = createProcess(name);
         Assert(process);
+        /*for (size_t i = 0; i < input; ++i) {
+            uint32_t id;
+            std::stringstream ss1;
+            ss << "i" << i;
+            Port<NS*> port = new (id) Port(id, Vid(ss.str()),
+                  Port<NS>::kPortInput, 
+        }*/
         return *process;
     }
     return getProcess(name);

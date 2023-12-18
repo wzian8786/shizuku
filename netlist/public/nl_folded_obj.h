@@ -88,21 +88,21 @@ class Net : public Base {
  public:
     ManagerByPool(Net);
 
-    Net(uint32_t id, Vid name, const DataType& dt) :
-        Base(id), _name(name), _dt(dt), _module(nullptr) {}
+    Net(uint32_t id, Vid name, Module<NS>& module, const DataType& dt) :
+        Base(id), _name(name), _dt(dt), _module(module) {}
 
     Vid getName() const { return _name; }
     const DataType& getDataType() const { return _dt; }
 
-    void setModule(Module<NS>* module) { _module = module; }
-    const Module<NS>& getModule() const {
-        Assert(_module);
-        return *_module;
-    }
+    const Module<NS>& getModule() const { return _module; }
 
     void addMPort(Port<NS>* port) { _mPorts.emplace_back(port); }
     void addIPort(IPort<NS>* dp) { _iPorts.emplace_back(dp); }
     void addPPort(PPort<NS>* pp) { _pPorts.emplace_back(pp); }
+
+    void transferMPort(size_t index, Net<NS>& dst);
+    void transferIPort(size_t index, Net<NS>& dst);
+    void transferPPort(size_t idnex, Net<NS>& dst);
 
     void print(FILE* fp, bool indent) const;
 
@@ -125,7 +125,7 @@ class Net : public Base {
  private:
     Vid                 _name;
     const DataType&     _dt;
-    Module<NS>*         _module;
+    Module<NS>&         _module;
     MPortVec            _mPorts;
     IPortHolder         _iPorts;
     PPortHolder         _pPorts;
@@ -334,4 +334,12 @@ class Process : public Base{
     PortHolder              _ports;
     PortIndex               _portIndex;
 };
+
+// as point, it is possbile to be null and must be filtered
+#define PTR_FOREACH(v, code) \
+    for (const auto& v##It : v) { \
+        if (!v##It) continue; \
+        code; \
+    }
+
 }

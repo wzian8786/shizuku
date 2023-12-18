@@ -293,6 +293,25 @@ void Process<NS>::print(FILE* fp, bool indent) const {
     }
 }
 
+template<uint32_t NS>
+void Net<NS>::transferMPort(size_t index, Net<NS>& dst) {
+    Assert(index < _mPorts.size());
+    dst._mPorts.push_back(_mPorts[index]);
+    _mPorts[index] = nullptr;
+}
+
+template<uint32_t NS>
+void Net<NS>::transferIPort(size_t index, Net<NS>& dst) {
+    Assert(index < _iPorts.size());
+    dst._iPorts.push_back(std::move(_iPorts[index]));
+}
+
+template<uint32_t NS>
+void Net<NS>::transferPPort(size_t index, Net<NS>& dst) {
+    Assert(index < _pPorts.size());
+    dst._pPorts.push_back(std::move(_pPorts[index]));
+}
+
 template class Port<NL_DEFAULT>;
 template class IPort<NL_DEFAULT>;
 template class PPort<NL_DEFAULT>;

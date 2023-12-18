@@ -193,13 +193,14 @@ conn_items
 
 net 
     : '(' T_NET T_ID {
+        Assert(gCtx.module);
         uint32_t id;
-        Net* net = new (id) Net(id, $3, Netlist::get().getTypeScalar());
+        Net* net = new (id) Net(id, $3, *gCtx.module, Netlist::get().getTypeScalar());
         gCtx.nets.emplace_back(net, NetContext());
     } conn_items ')'
     | '(' T_NET T_ID ')' {
         uint32_t id;
-        Net* net = new (id) Net(id, $3, Netlist::get().getTypeScalar());
+        Net* net = new (id) Net(id, $3, *gCtx.module, Netlist::get().getTypeScalar());
         gCtx.nets.emplace_back(net, NetContext());
     }
     ;
