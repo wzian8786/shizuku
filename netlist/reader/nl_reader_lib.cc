@@ -107,7 +107,7 @@ void resolveNets() {
 
             for (auto p : nc.pports) {
                 Vid iname = p.first;
-                Vid pname = p.second;
+                size_t index = (size_t)p.second;
 
                 if (!module.hasPInst(iname)) {
                     Logger::error("Module '%s' doesn't have process instance '%s'",
@@ -119,18 +119,17 @@ void resolveNets() {
                 Assert(&pinst->getParent() == &module);
 
                 Process<NL_DEFAULT>& process = pinst->getProcess();
-                if (!process.hasPort(pname)) {
-                    Logger::error("Process '%s' doesn't have port '%s'",
-                                   process.getName().str().c_str(), pname.str().c_str());
+                if (index >= process.getNumOfPorts()) {
+                    Logger::error("Process '%s' doesn't have the '%lu'th port",
+                                   pinst->getProcessName().str().c_str(), index);
                     error = true;
                     continue;
                 }
-                Port<NL_DEFAULT>* pport = &process.getPort(pname);
+                Port<NL_DEFAULT>* pport = &process.getPort(index);
                 if (pport->getDataType() != dt) {
-                    Logger::error("DataType mismatch net '%s', process '%s', port '%s'",
+                    Logger::error("DataType mismatch net '%s', process '%s', index 'lu'",
                                    net->getName().str().c_str(),
-                                   pname.str().c_str(),
-                                   pport->getName().str().c_str());
+                                   pinst->getProcessName().str().c_str(), index);
                     error = true;
                     continue;
                 }

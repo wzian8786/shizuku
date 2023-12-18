@@ -13,7 +13,6 @@ class Netlist : public PreVidDB,
                 public DataTypeDB {
  public:
     static Netlist& get() { return gSingleton; }
-    void print(FILE* fp, bool indent) const;
 
     void topDown(std::vector<Module<NS>*>& modules);
     void bottomUp(std::vector<Module<NS>*>& modules);

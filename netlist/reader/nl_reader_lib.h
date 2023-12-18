@@ -7,7 +7,7 @@ namespace reader {
 struct NetContext {
     std::vector<Vid> upports;
     std::vector<std::pair<Vid, Vid> > downports;
-    std::vector<std::pair<Vid, Vid> > pports;
+    std::vector<std::pair<Vid, int64_t> > pports;
 };
 
 struct Context {

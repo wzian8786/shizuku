@@ -23,6 +23,7 @@ class PoolDB {
     Process<NS>& getMultDrive(size_t input, size_t io);
 
     void clear();
+    void print(FILE* fp, bool indent) const;
 
  private:
     std::unordered_map<Vid, uint32_t, Vid::Hash>    _processIndex;
