@@ -22,15 +22,15 @@ void Netlist<NS>::topDown(std::vector<Module<NS>*>& modules) {
     while (i != modules.size()) {
         Module<NS>& cur = *modules[i];
         const typename Module<NS>::MInstHolder& minsts = cur.getMInsts();
-        for (auto it = minsts.begin(); it != minsts.end(); ++it) {
-            MInst<NS>& minst = **it;
+        PTR_FOREACH(minsts, {
+            MInst<NS>& minst = *minstsIt;
             Module<NS>& module = minst.getModule();
             if (!visited[module.getID()]) {
                 visited[module.getID()] = 1;
                 modules.push_back(&module);
             }
             i++;
-        }
+        });
     }
 }
 

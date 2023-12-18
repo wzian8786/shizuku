@@ -53,7 +53,6 @@ void resolveNets() {
             Net<NL_DEFAULT>* net = nit.first;
             const NetContext& nc = nit.second;
             module.addNet(net);
-            net->setModule(&module);
             const DataType& dt = net->getDataType();
             for (Vid pname : nc.upports) {
                 if (!module.hasPort(pname)) {
