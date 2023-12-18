@@ -8,6 +8,7 @@
 #include "nl_netlist.h"
 #include "nl_reader_lib.h"
 #include "szk_log.h"
+extern int yylineno;
 extern int yylex(void);
 void yyerror(const char* s);
 #define YYCOPY(Dst, Src, Count)                 \
@@ -56,6 +57,7 @@ using netlist::reader::gCtx;
 %token T_CALL;
 
 %type <vid> T_ID;
+%type <num> T_NUMBER;
 
 %start source_text;
 
@@ -139,19 +141,12 @@ direction
     ;
 
 port
-    : '(' T_PORT T_ID direction')' {
+    : '(' T_PORT T_ID direction ')' {
         uint32_t id;
         Port* port = new (id) Port(id, $3, gCtx.direction, Netlist::get().getTypeScalar());
-        if (gCtx.module) {
-            Assert(!gCtx.process);
-            if (!gCtx.module->addPort(port)) {
-                Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
-            }
-        } else {
-            Assert(gCtx.process);
-            if (!gCtx.process->addPort(port)) {
-                Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
-            }
+        Assert(gCtx.module);
+        if (!gCtx.module->addPort(port)) {
+            Logger::fatal("Duplicate port '%s'", port->getName().str().c_str());
         }
     }
     ;
@@ -173,7 +168,7 @@ downport
     ;
 
 pport
-    : '(' T_PPORT T_ID T_ID ')' {
+    : '(' T_PPORT T_ID T_NUMBER ')' {
         Assert(!gCtx.nets.empty());
         NetContext& ctx = gCtx.nets.back().second;
         ctx.pports.emplace_back($3, $4);
@@ -250,7 +245,7 @@ pinst
         }
         Assert(gCtx.module);
         uint32_t id;
-        PInst* pinst = new (id) PInst(id, $3, *gCtx.module, *process);
+        PInst* pinst = new (id) PInst(id, $3, procName, *gCtx.module, *process);
         if (!gCtx.module->addPInst(pinst)) {
             Logger::fatal("Duplicate process instance '%s'", pinst->getName().str().c_str());
         }
@@ -284,8 +279,16 @@ process_items
     ;
 
 process_item
-    : port
+    : process_port
     ;
+
+process_port
+    : '(' T_PORT direction ')' {
+        uint32_t id;
+        Port* port = new (id) Port(id, Vid("S$Port"), gCtx.direction, Netlist::get().getTypeScalar());
+        bool suc = gCtx.process->addPort(port);
+        Assert(suc);
+    }
 
 process_type
     : T_COMB {
@@ -302,5 +305,5 @@ process_type
 %%
 
 void yyerror(const char* s) {
-    Logger::fatal("Oops, %s", s);
+    Logger::fatal("Oops, %s at line %d", s, yylineno);
 }

@@ -6,6 +6,7 @@
 #define YY_NO_UNPUT
 #define YY_NO_INPUT
 typedef vid::VID VID;
+extern int yylineno;
 %}
 SPACE       [ \t\b\f\r]
 NEWLINE     \n
@@ -13,7 +14,9 @@ NEWLINE     \n
 SIMPLE_ID   [a-zA-Z_][a-zA-Z0-9$_]*
 ESCAPED_ID  \\[^ \t\b\f\r\n]+[ \t\b\f\r\n]
 ID          {ESCAPED_ID}|{SIMPLE_ID}
-NUMBER      [1-9][0-9]*
+NUMBER      [1-9][0-9]*|0
+
+%option yylineno
 
 %%
 
@@ -39,5 +42,5 @@ NUMBER      [1-9][0-9]*
 {NEWLINE}   { ; }
 "("         { return '('; }
 ")"         { return ')'; }
-.           { util::Logger::fatal("Oops, syntax error."); }
+.           { util::Logger::fatal("Oops! syntax error at line %d.", yylineno); }
 

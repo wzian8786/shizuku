@@ -217,16 +217,16 @@ class MultDriveCreator {
         for (size_t i = 0; i < iports.size(); ++i) {
             const IPort<NS>* port = iports[i].get();
             if (!port) continue;
-            if (port->getPort().isInput() || port->getPort().isInout()) {
-                dmports.emplace(i);
+            if (port->getPort().isOutput() || port->getPort().isInout()) {
+                diports.emplace(i);
                 if (port->getPort().isInout()) io++;
             }
         };
         for (size_t i = 0; i < mports.size(); ++i) {
             const Port<NS>* port = mports[i];
             if (!port) continue;
-            if (port->isOutput() || port->isInout()) {
-                diports.emplace(i);
+            if (port->isInput() || port->isInout()) {
+                dmports.emplace(i);
                 if (port->isInout()) io++;
             }
         };
@@ -242,7 +242,7 @@ class MultDriveCreator {
         if (drive > 1) {
             Process<NS>& process = Netlist<NS>::get().getMultDrive(drive - io, io);
             uint32_t id;
-            PInst<NS>* pinst = new (id) PInst<NS>(id, process.getName().derive(), module, process);
+            PInst<NS>* pinst = new (id) PInst<NS>(id, Vid(kVidSM).derive(), Vid(kVidSM).derive(), module, process);
             util::Logger::debug("(elab) creating mult-drive instance %s(%u)",
                     pinst->getName().str().c_str(), pinst->getID());
             for (size_t index: diports) {

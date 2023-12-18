@@ -196,10 +196,11 @@ class PInst : public Base {
  public:
     ManagerByPool(PInst);
 
-    PInst(uint32_t id, Vid name, Module<NS>& parent, Process<NS>& proc) :
-        Base(id), _name(name), _proc(proc), _parent(parent) {}
+    PInst(uint32_t id, Vid name, Vid procName, Module<NS>& parent, Process<NS>& proc) :
+        Base(id), _name(name), _procName(procName), _proc(proc), _parent(parent) {}
 
     Vid getName() const { return _name; }
+    Vid getProcessName() const { return _procName; }
     const Process<NS>& getProcess() const { return _proc; }
     Process<NS>& getProcess() { return _proc; }
 
@@ -211,6 +212,7 @@ class PInst : public Base {
 
  private:
     Vid                     _name;
+    Vid                     _procName;
     Process<NS>&            _proc;
     Module<NS>&             _parent;
 };
@@ -303,12 +305,20 @@ class Process : public Base{
         kTypeCall,
     };
 
-    Process(uint32_t id, Vid name);
+    struct Hash {
+        size_t operator()(const Process& p) const {
+            return (size_t) &p;
+        }
+    };
 
-    Vid getName() const { return _name; }
+    explicit Process(uint32_t id);
 
     uint32_t getNumOfInput() const { return _numInput; }
     uint32_t getNumOfOutput() const { return _numOutput; }
+    uint32_t getNumOfInout() const { return _numInout; }
+    uint32_t getNumOfPorts() const {
+        return _numInput + _numOutput + _numInout;
+    }
 
     void setType(Type type);
     bool isComb() const { return testFlag(kTypeComb); }
@@ -316,23 +326,20 @@ class Process : public Base{
     bool isCall() const { return testFlag(kTypeCall); }
 
     bool addPort(Port<NS>* port);
-    bool hasPort(Vid) const;
-    const Port<NS>& getPort(Vid pname) const;
-    Port<NS>& getPort(Vid pname);
+    const Port<NS>& getPort(size_t id) const;
+    Port<NS>& getPort(size_t id);
 
-    void print(FILE* fp, bool indent) const;
+    void print(FILE* fp, bool indent, Vid name) const;
 
  private:
     typedef std::unique_ptr<Port<NS>> PortPtr;
     typedef std::vector<PortPtr> PortHolder;
-    typedef std::unordered_map<Vid, Port<NS>*, Vid::Hash> PortIndex;
 
  private:
-    Vid                     _name;
     uint32_t                _numInput;
     uint32_t                _numOutput;
+    uint32_t                _numInout;
     PortHolder              _ports;
-    PortIndex               _portIndex;
 };
 
 // as point, it is possbile to be null and must be filtered

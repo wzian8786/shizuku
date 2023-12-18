@@ -3,17 +3,6 @@
 #include "nl_folded_obj.h"
 namespace netlist {
 template<uint32_t NS>
-void Netlist<NS>::print(FILE* fp, bool indent) const {
-    Module<NS>::foreach([fp, indent](const Module<NS>& module, size_t) {
-        if (module.isRoot()) return;
-        module.print(fp, indent);
-    }, 1);
-    Process<NS>::foreach([fp, indent](const Process<NS>& process, size_t) {
-        process.print(fp, indent);
-    }, 1);
-}
-
-template<uint32_t NS>
 void Netlist<NS>::topDown(std::vector<Module<NS>*>& modules) {
     std::vector<uint32_t> visited(Module<NS>::Pool::get().getMaxSize());
     Module<NS>* root = &this->getRoot();

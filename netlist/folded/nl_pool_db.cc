@@ -23,6 +23,21 @@ void PoolDB<NS>::clear() {
 }
 
 template<uint32_t NS>
+void PoolDB<NS>::print(FILE* fp, bool indent) const {
+    Module<NS>::foreach([fp, indent](const Module<NS>& module, size_t) {
+        if (module.isRoot()) return;
+        module.print(fp, indent);
+    }, 1);
+    std::vector<Vid> names(Process<NS>::Pool::get().getMaxSize());
+    for (const auto& p : _processIndex) {
+        names[p.second] = p.first;
+    }
+    Process<NS>::foreach([fp, indent, &names](const Process<NS>& process, size_t id) {
+        process.print(fp, indent, names[id]);
+    }, 1);
+}
+
+template<uint32_t NS>
 Module<NS>* PoolDB<NS>::createModule(Vid name) {
     Module<NS>* module = nullptr;
     if (_moduleIndex.find(name) == _moduleIndex.end()) {
@@ -57,7 +72,7 @@ Process<NS>* PoolDB<NS>::createProcess(Vid name) {
     Process<NS>* process = nullptr;
     if (_processIndex.find(name) == _processIndex.end()) {
         uint32_t id;
-        process = new (id) Process<NS>(id, name);
+        process = new (id) Process<NS>(id);
         _processIndex.emplace(name, process->getID());
     }
     return process;

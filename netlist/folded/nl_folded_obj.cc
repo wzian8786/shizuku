@@ -73,7 +73,7 @@ void PInst<NS>::print(FILE* fp, bool indent) const {
         fprintf(fp, "%s", "    ");
     }
     fprintf(fp, "(%%pinst %s %s)",getName().str().c_str(),
-                getProcess().getName().str().c_str());
+                getProcessName().str().c_str());
     if (indent) {
         fprintf(fp, "\n");
     }
@@ -226,11 +226,11 @@ PInst<NS>& Module<NS>::getPInst(Vid iname) {
 }
 
 template<uint32_t NS>
-Process<NS>::Process(uint32_t id, Vid name) :
+Process<NS>::Process(uint32_t id) :
             Base(id),
-            _name(name),
             _numInput(0),
-            _numOutput(0) {
+            _numOutput(0),
+            _numInout(0) {
 }
 
 template<uint32_t NS>
@@ -240,47 +240,36 @@ void Process<NS>::setType(Type type) {
 
 template<uint32_t NS>
 bool Process<NS>::addPort(Port<NS>* port) {
-    auto it = _portIndex.find(port->getName());
-    if (it == _portIndex.end()) {
-        _ports.emplace_back(port);
-        _portIndex[port->getName()] = port;
-        if (port->isInput()) {
-            _numInput++;
-        } else if (port->isOutput()) {
-            _numOutput++;
-        } else if (port->isInout()) {
-            _numInput++;
-            _numOutput++;
-        } else {
-            Assert(0);
-        }
-        return true;
+    _ports.emplace_back(port);
+    if (port->isInput()) {
+        _numInput++;
+    } else if (port->isOutput()) {
+        _numOutput++;
+    } else if (port->isInout()) {
+        _numInout++;
+    } else {
+        Assert(0);
     }
-    return false;
+    return true;
 }
 
 template<uint32_t NS>
-bool Process<NS>::hasPort(Vid pname) const {
-    return _portIndex.find(pname) != _portIndex.end();
+const Port<NS>& Process<NS>::getPort(size_t id) const {
+    Assert(id < _ports.size());
+    Assert(_ports[id]);
+    return *_ports[id];
 }
 
 template<uint32_t NS>
-const Port<NS>& Process<NS>::getPort(Vid pname) const {
-    auto it = _portIndex.find(pname);
-    Assert(it != _portIndex.end());
-    return *it->second;
+Port<NS>& Process<NS>::getPort(size_t id) {
+    Assert(id < _ports.size());
+    Assert(_ports[id]);
+    return *_ports[id];
 }
 
 template<uint32_t NS>
-Port<NS>& Process<NS>::getPort(Vid pname) {
-    auto it = _portIndex.find(pname);
-    Assert(it != _portIndex.end());
-    return *it->second;
-}
-
-template<uint32_t NS>
-void Process<NS>::print(FILE* fp, bool indent) const {
-    fprintf(fp, "(%%process %s %s",getName().str().c_str(),
+void Process<NS>::print(FILE* fp, bool indent, Vid name) const {
+    fprintf(fp, "(%%process %s %s", name.str().c_str(),
                     isComb() ? "%comb" :
                     isSeq() ? "%seq" : "%call");
     if (!_ports.empty() && indent) {
