@@ -52,9 +52,11 @@ class DataType {
     virtual bool isUnion()     const { return false; }
     virtual bool isInterface() const { return false; }
 
-    virtual int getMSB()    const { Assert(0); return 0; }
-    virtual int getLSB()    const { Assert(0); return 0; }
-    virtual size_t width()  const { Assert(0); return 0; }
+    virtual int getMSB()        const { Assert(0); return 0; }
+    virtual int getLSB()        const { Assert(0); return 0; }
+    virtual size_t width()      const { Assert(0); return 0; }
+
+    virtual std::string toString()  const { return ""; }
 
     template<typename T>
     const T* cast() const {

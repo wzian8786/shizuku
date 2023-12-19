@@ -301,6 +301,23 @@ void Net<NS>::transferPPort(size_t index, Net<NS>& dst) {
     dst._pPorts.push_back(std::move(_pPorts[index]));
 }
 
+template<uint32_t NS>
+std::atomic<size_t> Port<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> IPort<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> PPort<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> Net<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> MInst<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> PInst<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> Module<NS>::gDeleted(0);
+template<uint32_t NS>
+std::atomic<size_t> Process<NS>::gDeleted(0);
+
 template class Port<NL_DEFAULT>;
 template class IPort<NL_DEFAULT>;
 template class PPort<NL_DEFAULT>;
