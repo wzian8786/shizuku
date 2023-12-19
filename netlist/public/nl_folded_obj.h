@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cstdio>
 #include <vector>
 #include <memory>
@@ -38,18 +39,19 @@ class Base {
 static_assert(sizeof(Base) == Base::kNextOffset, "size mismatch");
 
 #define ManagerByPool(T) \
-    typedef util::Pool<T, NS, NlPoolSpec> Pool; \
+    typedef util::Pool<T, NS, NlPoolSpec, true> Pool; \
     static void* operator new(std::size_t count, uint32_t& id) { \
         Assert(count == sizeof(T)); \
         id = Pool::get().New(); \
         return &Pool::get()[id]; \
     } \
     static void operator delete(void* p) {} \
-    ~T() { Base::~Base(); } \
     template<typename Func> \
     static void foreach(Func func, size_t threads=0) { \
         util::foreach<typename T::Pool, util::TransBuilder<T>, util::ValidFilter<T>>(func, threads); \
-    }
+    } \
+    static std::atomic<size_t>   gDeleted; \
+    ~T() { gDeleted++; } 
 
 template<uint32_t NS>
 class Port : public Base {
@@ -311,7 +313,7 @@ class Process : public Base{
         }
     };
 
-    explicit Process(uint32_t id);
+    Process(uint32_t id);
 
     uint32_t getNumOfInput() const { return _numInput; }
     uint32_t getNumOfOutput() const { return _numOutput; }

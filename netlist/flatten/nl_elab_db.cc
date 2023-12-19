@@ -201,8 +201,7 @@ class ElabAnnotator {
 template<uint32_t NS>
 class MultDriveCreator {
  public:
-    MultDriveCreator() :
-        _hasDrive(Port<NS>::Pool::get().getMaxSize()) {}
+    MultDriveCreator() {}
 
     void createMultDriveForNet(Module<NS>& module, Net<NS>& net) {
         util::Logger::debug("(elab) creating mult-drive for net %s(%u)",
@@ -213,6 +212,7 @@ class MultDriveCreator {
         std::unordered_set<size_t> diports;
         std::unordered_set<size_t> dmports;
         std::unordered_set<size_t> dpports;
+        // 1. search for drivers
         size_t io  = 0;
         for (size_t i = 0; i < iports.size(); ++i) {
             const IPort<NS>* port = iports[i].get();
@@ -238,25 +238,51 @@ class MultDriveCreator {
                 if (port->getPort().isInout()) io++;
             }
         };
+
+        // 2. do nothing if drive <= 1
         size_t drive = diports.size() + dmports.size() + dpports.size();
-        if (drive > 1) {
-            Process<NS>& process = Netlist<NS>::get().getMultDrive(drive - io, io);
-            uint32_t id;
-            PInst<NS>* pinst = new (id) PInst<NS>(id, Vid(kVidSM).derive(), Vid(kVidSM).derive(), module, process);
-            util::Logger::debug("(elab) creating mult-drive instance %s(%u)",
-                    pinst->getName().str().c_str(), pinst->getID());
-            for (size_t index: diports) {
-                Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
-                net.transferIPort(index, *dnet);
-            }
-            for (size_t index: dmports) {
-                Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
-                net.transferMPort(index, *dnet);
-            }
-            for (size_t index: dpports) {
-                Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
-                net.transferPPort(index, *dnet);
-            }
+        if (drive <= 1) return;
+
+        // 3. get multDrive processs
+        Vid procName = Netlist<NS>::get().createMultDrive(drive - io, io, net.getDataType());
+        Process<NS>& process = Netlist<NS>::get().getProcess(procName);
+
+        // 4. create multDrive processs inst
+        uint32_t id;
+        PInst<NS>* pinst = new (id) PInst<NS>(id, procName.derive(), procName, module, process);
+        util::Logger::debug("(elab) creating mult-drive instance %s(%u)",
+                pinst->getName().str().c_str(), pinst->getID());
+
+        // 5. connect drivers to the input port of multiDrive instance
+        size_t inputPortId = 0;
+        size_t inoutPortId = drive - io;
+        for (size_t index: diports) {
+            const Port<NS>& port = iports[index]->getPort();
+            Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
+            net.transferIPort(index, *dnet);
+
+            size_t portId = port.isOutput() ? inputPortId++ : inoutPortId++;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            dnet->addPPort(pport);
+        }
+
+        for (size_t index: dmports) {
+            const Port<NS>* port = mports[index];
+            Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
+            net.transferMPort(index, *dnet);
+
+            size_t portId = port->isInput() ? inputPortId++ : inoutPortId++;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            dnet->addPPort(pport);
+        }
+        for (size_t index: dpports) {
+            const Port<NS>& port = pports[index]->getPort();
+            Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
+            net.transferPPort(index, *dnet);
+
+            size_t portId = port.isOutput() ? inputPortId++ : inoutPortId++;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            dnet->addPPort(pport);
         }
     }
 
@@ -270,9 +296,6 @@ class MultDriveCreator {
             });
         }
     }
-
- private:
-    std::vector<uint8_t>                _hasDrive;
 };
 
 template<uint32_t NS>
@@ -285,8 +308,7 @@ void ElabDB<NS>::elab() {
     Netlist<NS>::get().bottomUp(topo);
 
     // 2. create multiple drive
-    MultDriveCreator<NS> mdc;
-    mdc.createMultDrive(topo);
+    MultDriveCreator<NS>().createMultDrive(topo);
 
     // 3. calculate the weights
     genWeights(topo);
