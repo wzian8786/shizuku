@@ -270,6 +270,7 @@ process
     } process_type process_items')' {
         Assert(gCtx.process->isComb() || gCtx.process->isSeq() || gCtx.process->isCall());
         gCtx.process = nullptr;
+        gCtx.portId = 0;
     }
     ;
 
@@ -285,7 +286,7 @@ process_item
 process_port
     : '(' T_PORT direction ')' {
         uint32_t id;
-        Port* port = new (id) Port(id, Vid("S$Port"), gCtx.direction, Netlist::get().getTypeScalar());
+        Port* port = new (id) Port(id, gCtx.portId++, gCtx.direction, Netlist::get().getTypeScalar());
         bool suc = gCtx.process->addPort(port);
         Assert(suc);
     }

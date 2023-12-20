@@ -67,9 +67,11 @@ class Port : public Base {
     };
 
     Port(uint32_t id, Vid name, Direction dir, const DataType& dt);
+    Port(uint32_t id, size_t index, Direction dir, const DataType& dt);
     const DataType& getDataType() const { return _dt; }
 
     Vid getName() const { return _name; }
+    size_t getIndex() const { return _index; }
 
     bool isInput() const { return testFlag(kPortInput); }
     bool isOutput() const { return testFlag(kPortOutput); }
@@ -79,11 +81,14 @@ class Port : public Base {
         return isInput() ? kPortInput : isOutput() ? kPortOutput : kPortInout;
     }
 
-    void print(FILE* fp, bool indent) const;
+    void print(FILE* fp, bool indent, bool isModule) const;
 
  private:
-    Vid                 _name;
     const DataType&     _dt;
+    union {
+        Vid             _name;
+        size_t          _index;
+    };
 };
 
 template<uint32_t NS>
@@ -345,12 +350,4 @@ class Process : public Base{
     uint32_t                _numInout;
     PortHolder              _ports;
 };
-
-// as point, it is possbile to be null and must be filtered
-#define PTR_FOREACH(v, code) \
-    for (const auto& v##It : v) { \
-        if (!v##It) continue; \
-        code; \
-    }
-
 }

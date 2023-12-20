@@ -38,8 +38,8 @@ int main(int argc, const char* argv[]) {
     parseNetlist();
     netlist::Netlist<netlist::NL_DEFAULT>& nl =
             netlist::Netlist<netlist::NL_DEFAULT>::get();
-    nl.print(stdout, true);
     nl.elab();
+    nl.print(stdout, true);
     nl.printFlatten(stdout);
     return 0;
 }

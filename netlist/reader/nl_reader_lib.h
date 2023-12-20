@@ -13,6 +13,7 @@ struct NetContext {
 struct Context {
     Module<NL_DEFAULT>* module;
     Process<NL_DEFAULT>* process;
+    size_t portId;
     Port<NL_DEFAULT>::Direction direction;
     std::vector<std::pair<Net<NL_DEFAULT>*, NetContext> > nets;
 
@@ -28,6 +29,7 @@ struct Context {
 
     Context() : module(nullptr), 
                 process(nullptr),
+                portId(0),
                 direction(Port<NL_DEFAULT>::kPortInvalid) {}
 
     void clear() {

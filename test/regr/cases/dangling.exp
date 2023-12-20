@@ -1,0 +1,46 @@
+
+                      Welcome
+
+  This project is still in development. Thera are lots
+  of features not finished yet. If anyone is interested
+  in this project, please visit:
+
+    https://github.com/wzian8786/shisuku
+
+  More information is available there.
+
+(%module m1
+    (%net n1
+        (%iport mi1 p1)
+    )
+    (%net n2
+        (%pport pi1 0)
+    )
+    (%net S$$Z_0
+        (%iport mi1 p2)
+    )
+    (%net S$$Z_1
+        (%iport mi2 p3)
+    )
+    (%net S$$Z_2
+        (%pport pi1 1)
+    )
+    (%minst mi1 m2)
+    (%minst mi2 m3)
+    (%pinst pi1 proc1)
+)
+(%module m2
+    (%port p1 %input)
+    (%port p2 %input)
+)
+(%module m3
+    (%port p3 %output)
+)
+(%process proc1 %seq
+    (%port %input)
+    (%port %input)
+)
+#0 S$Root(S$Root)
+#1 m1(m1)
+#2 mi1(m2)
+#3 mi2(m3)
