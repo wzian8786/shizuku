@@ -285,20 +285,19 @@ void Process<NS>::print(FILE* fp, bool indent, Vid name) const {
 template<uint32_t NS>
 void Net<NS>::transferMPort(size_t index, Net<NS>& dst) {
     Assert(index < _mPorts.size());
-    dst._mPorts.push_back(_mPorts[index]);
-    _mPorts[index] = nullptr;
+    dst._mPorts.emplace_back(_mPorts.del(index));
 }
 
 template<uint32_t NS>
 void Net<NS>::transferIPort(size_t index, Net<NS>& dst) {
     Assert(index < _iPorts.size());
-    dst._iPorts.push_back(std::move(_iPorts[index]));
+    dst._iPorts.emplace_back(_iPorts.del(index));
 }
 
 template<uint32_t NS>
 void Net<NS>::transferPPort(size_t index, Net<NS>& dst) {
     Assert(index < _pPorts.size());
-    dst._pPorts.push_back(std::move(_pPorts[index]));
+    dst._pPorts.emplace_back(_pPorts.del(index));
 }
 
 template<uint32_t NS>
