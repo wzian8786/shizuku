@@ -102,8 +102,8 @@ class ElabAnnotator {
         bool hasSibling = false;
         const typename Net<NS>::IPortHolder& iports = net.getIPorts();
         uint32_t moduleID = net.getModule().getID();
-        PTR_FOREACH(iports, {
-            const IPort<NS>& iport = *iportsIt;
+        for (auto it = iports.begin(); it != iports.end(); ++it) {
+            const IPort<NS>& iport = **it;
             Assert(iport.getPort().getID() < _portAnno.size());
             NexusPtr pnexus = _portAnno[iport.getPort().getID()];
             // Port may not connected to any net, then is not annotated
@@ -124,7 +124,7 @@ class ElabAnnotator {
                 netNexus->ports.emplace_back(portNexus);
                 hasSibling = true;
             }
-        });
+        }
 
         if (!hasSibling) {
             const typename Net<NS>::MPortVec& mports = net.getMPorts();
@@ -163,9 +163,9 @@ class ElabAnnotator {
                 link.emplace(netNexus.nexus);
     
                 const typename Net<NS>::MPortVec& mportVec = net.getMPorts();
-                PTR_FOREACH(mportVec, {
-                    mports.emplace_back(mportVecIt);
-                });
+                for (auto it = mportVec.begin(); it != mportVec.end(); ++it) {
+                    mports.emplace_back(*it);
+                }
     
                 for (const auto& portNexus : netNexus.ports) {
                     link.emplace(portNexus->nexus);
@@ -177,6 +177,9 @@ class ElabAnnotator {
         }
     }
 
+    void mergeNexus(Nexus& nx, Nexus& sub, const IPort<NS>& port) {
+    }
+
  public:
     void annotate(const std::vector<Module<NS>*>& topo) {
         for (auto module : topo) {
@@ -184,9 +187,9 @@ class ElabAnnotator {
             util::Logger::debug("(elab) annotating module %s(%u)",
                     module->getName().str().c_str(), module->getID());
             IPortNexusIndex portNexusIndex;
-            PTR_FOREACH(nets, {
-                annotateNet(*netsIt, portNexusIndex);
-            });
+            for (auto it = nets.begin(); it != nets.end(); ++it) {
+                annotateNet(**it, portNexusIndex);
+            }
             mergeSiblings(*module);
         }
     }
@@ -214,28 +217,25 @@ class MultDriveCreator {
         std::unordered_set<size_t> dpports;
         // 1. search for drivers
         size_t io  = 0;
-        for (size_t i = 0; i < iports.size(); ++i) {
-            const IPort<NS>* port = iports[i].get();
-            if (!port) continue;
-            if (port->getPort().isOutput() || port->getPort().isInout()) {
-                diports.emplace(i);
-                if (port->getPort().isInout()) io++;
+        for (auto it = iports.begin(); it != iports.end(); ++it) {
+            const IPort<NS>& port = **it;
+            if (port.getPort().isOutput() || port.getPort().isInout()) {
+                diports.emplace(it.index);
+                if (port.getPort().isInout()) io++;
+            }
+        }
+        for (auto it = mports.begin(); it != mports.end(); ++it) {
+            const Port<NS>& port = **it;
+            if (port.isInput() || port.isInout()) {
+                dmports.emplace(it.index);
+                if (port.isInout()) io++;
             }
         };
-        for (size_t i = 0; i < mports.size(); ++i) {
-            const Port<NS>* port = mports[i];
-            if (!port) continue;
-            if (port->isInput() || port->isInout()) {
-                dmports.emplace(i);
-                if (port->isInout()) io++;
-            }
-        };
-        for (size_t i = 0; i < pports.size(); ++i) {
-            const PPort<NS>* port = pports[i].get();
-            if (!port) continue;
-            if (port->getPort().isOutput() || port->getPort().isInout()) {
-                dpports.emplace(i);
-                if (port->getPort().isInout()) io++;
+        for (auto it = pports.begin(); it != pports.end(); ++it) {
+            const PPort<NS>& port = **it;
+            if (port.getPort().isOutput() || port.getPort().isInout()) {
+                dpports.emplace(it.index);
+                if (port.getPort().isInout()) io++;
             }
         };
 
@@ -249,7 +249,7 @@ class MultDriveCreator {
 
         // 4. create multDrive processs inst
         uint32_t id;
-        PInst<NS>* pinst = new (id) PInst<NS>(id, procName.derive(), procName, module, process);
+        PInst<NS>* pinst = new (id) PInst<NS>(id, Vid("MD").derive(), procName, module, process);
         util::Logger::debug("(elab) creating mult-drive instance %s(%u)",
                 pinst->getName().str().c_str(), pinst->getID());
 
@@ -291,10 +291,78 @@ class MultDriveCreator {
             const typename Module<NS>::NetHolder& nets = module->getNets();
             util::Logger::debug("(elab) creating mult-drive for module %s(%u)",
                     module->getName().str().c_str(), module->getID());
-            PTR_FOREACH(nets, {
-                createMultDriveForNet(*module, *netsIt);
-            });
+            for (auto it = nets.begin(); it != nets.end(); ++it) {
+                createMultDriveForNet(*module, **it);
+            }
         }
+    }
+};
+
+template<uint32_t NS>
+class DanglingNetCreator {
+ private:
+    struct PairHash {
+        size_t operator()(const std::pair<uint32_t, uint32_t>& p) const {
+            static_assert(sizeof(std::pair<uint32_t, uint32_t>) == sizeof(size_t));
+            union {
+                std::pair<uint32_t, uint32_t> p;
+                size_t s;
+            } u {p};
+            return std::hash<size_t>()(u.s);
+        }
+    };
+
+ public:
+    void createDanglingNet() {
+        Module<NS>::foreach([](Module<NS>& module, size_t id) {
+            std::unordered_set<std::pair<uint32_t, uint32_t>, PairHash> visitedIPorts;
+            std::unordered_set<std::pair<uint32_t, uint32_t>, PairHash> visitedPPorts;
+            const typename Module<NS>::NetHolder& nets = module.getNets();
+            for (auto nit = nets.begin(); nit != nets.end(); ++nit) {
+                const typename Net<NS>::IPortHolder& iports = nit->getIPorts();
+                for (auto it = iports.begin(); it != iports.end(); ++it) {
+                    visitedIPorts.emplace(it->getMInst().getID(),
+                                          it->getPort().getID());
+                }
+                const typename Net<NS>::PPortHolder& pports = nit->getPPorts();
+                for (auto it = pports.begin(); it != pports.end(); ++it) {
+                    visitedPPorts.emplace(it->getPInst().getID(),
+                                          it->getPort().getID());
+                }
+            }
+            const typename Module<NS>::MInstHolder& minsts = module.getMInsts();
+            for (auto mit = minsts.begin(); mit != minsts.end(); ++mit) {
+                const Module<NS>& master = mit->getModule();
+                const typename Module<NS>::PortHolder& ports = master.getPorts();
+                for (auto it = ports.begin(); it != ports.end(); ++it) {
+                    std::pair<uint32_t, uint32_t> key { mit->getID(), it->getID() };
+                    if (visitedIPorts.find(key) == visitedIPorts.end()) {
+                        uint32_t id1;
+                        Net<NS>* nnet = new (id1) Net<NS>(id1, Vid("Z").derive(),
+                                                module, it->getDataType());
+                        IPort<NS>* iport = new (id1) IPort<NS>(id1, **mit, **it);
+                        nnet->addIPort(iport);
+                        module.addNet(nnet);
+                    }
+                }
+            }
+            const typename Module<NS>::PInstHolder& pinsts = module.getPInsts();
+            for (auto pit = pinsts.begin(); pit != pinsts.end(); ++pit) {
+                const Process<NS>& process = pit->getProcess();
+                const typename Process<NS>::PortHolder& ports = process.getPorts();
+                for(auto it = ports.begin(); it != ports.end(); ++it) {
+                    std::pair<uint32_t, uint32_t> key { pit->getID(), it->getID() };
+                    if (visitedPPorts.find(key) == visitedPPorts.end()) {
+                        uint32_t id1;
+                        Net<NS>* nnet = new (id1) Net<NS>(id1, Vid("Z").derive(),
+                                                module, it->getDataType());
+                        PPort<NS>* pport = new (id1) PPort<NS>(id1, **pit, **it);
+                        nnet->addPPort(pport);
+                        module.addNet(nnet);
+                    }
+                }
+            }
+        });
     }
 };
 
@@ -307,16 +375,19 @@ void ElabDB<NS>::elab() {
     std::vector<Module<NS>*> topo;
     Netlist<NS>::get().bottomUp(topo);
 
-    // 2. create multiple drive
+    // 2. create nets for dangling port
+    DanglingNetCreator<NS>().createDanglingNet();
+
+    // 3. create multiple drive
     MultDriveCreator<NS>().createMultDrive(topo);
 
-    // 3. calculate the weights
+    // 4. calculate the weights
     genWeights(topo);
 
-    // 4. generate index for DFS
+    // 5. generate index for DFS
     genIndex();
 
-    // 5. 
+    // 6. annotate the design
     ElabAnnotator<NS> anno;
     anno.annotate(topo);
 }
@@ -341,11 +412,12 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
         const typename Module<NS>::PInstHolder& pinsts = mod->getPInsts();
         size_t dfs = 1;
         size_t cellNum = kReservedCell;
-        PTR_FOREACH(pinsts, {
-            const PInst<NS>& pinst = *pinstsIt;
+        for (auto it = pinsts.begin(); it != pinsts.end(); ++it) {
+            const PInst<NS>& pinst = **it;
             const Process<NS>& process = pinst.getProcess();
-            cellNum += Cell::getNumCell(process.getNumOfInput(), process.getNumOfOutput());
-        });
+            cellNum += Cell::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
+                                        process.getNumOfOutput() + process.getNumOfInout());
+        };
 
         for (auto it = insts.begin(); it != insts.end(); ++it) {
             const MInst<NS>& cinst = **it;

@@ -8,6 +8,7 @@
 #include "nl_datatype.h"
 #include "szk_pool.h"
 #include "szk_foreach.h"
+#include "szk_deletable_vec.h"
 #include "vid.h"
 namespace netlist {
 class Base {
@@ -109,13 +110,13 @@ class Net : public Base {
     void print(FILE* fp, bool indent) const;
 
  public:
-    typedef std::vector<Port<NS>*> MPortVec;
+    typedef util::DeletableVec<Port<NS>*> MPortVec;
 
     typedef std::unique_ptr<IPort<NS>> IPortPtr;
-    typedef std::vector<IPortPtr> IPortHolder;
+    typedef util::DeletableVec<IPortPtr> IPortHolder;
 
     typedef std::unique_ptr<PPort<NS>> PPortPtr;
-    typedef std::vector<PPortPtr> PPortHolder;
+    typedef util::DeletableVec<PPortPtr> PPortHolder;
 
     const MPortVec& getMPorts() const { return _mPorts; }
     MPortVec& getMPorts() { return _mPorts; }
@@ -267,16 +268,16 @@ class Module : public Base {
 
  public:
     typedef std::unique_ptr<Port<NS>> PortPtr;
-    typedef std::vector<PortPtr> PortHolder;
+    typedef util::DeletableVec<PortPtr> PortHolder;
 
     typedef std::unique_ptr<Net<NS>> NetPtr;
-    typedef std::vector<NetPtr> NetHolder;
+    typedef util::DeletableVec<NetPtr> NetHolder;
 
     typedef std::unique_ptr<MInst<NS>> MInstPtr;
-    typedef std::vector<MInstPtr> MInstHolder;
+    typedef util::DeletableVec<MInstPtr> MInstHolder;
 
     typedef std::unique_ptr<PInst<NS>> PInstPtr;
-    typedef std::vector<PInstPtr> PInstHolder;
+    typedef util::DeletableVec<PInstPtr> PInstHolder;
 
     const PortHolder& getPorts() const { return _ports; }
     const NetHolder& getNets() const { return _nets; }
@@ -333,9 +334,10 @@ class Process : public Base{
 
     void print(FILE* fp, bool indent, Vid name) const;
 
- private:
     typedef std::unique_ptr<Port<NS>> PortPtr;
-    typedef std::vector<PortPtr> PortHolder;
+    typedef util::DeletableVec<PortPtr> PortHolder;
+    const PortHolder& getPorts() const { return _ports; }
+    PortHolder& getPorts() { return _ports; }
 
  private:
     uint32_t                _numInput;
