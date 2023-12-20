@@ -54,13 +54,15 @@ def parseArgv():
 
 def runTest(fpyaml, fname):
     test = yaml.safe_load(fpyaml)
-    stages = ("run", "check")
+    stages = ("run", "check", "clean")
     logs = []
     for stage in stages:
         if stage in test:
             log = "{}.{}.log".format(fname, stage)
             logs.append(log)
             cmd = test[stage] + " 2>&1 > " + log
+            if stage == "clean" and not cleanLog:
+                continue
             if os.system(cmd):
                 return False
     if cleanLog:
