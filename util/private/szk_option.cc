@@ -4,10 +4,11 @@
 #include "szk_log.h"
 namespace util {
 OptionDB OptionDB::gSingleton;
+
 void Option::check() {
-    Assert(_short.length() == 2 && _long.length() > 2);
-    Assert(_short[0] == '-');
-    Assert(_long[0] == '-' && _long[1] == '-');
+    Assert(_short.empty() || (_short.length() == 2 && _short[0] == '-'));
+    Assert(_long.empty() || (_long.length() > 2 &&
+            _long[0] == '-' && _long[1] == '-'));
 }
 
 bool Option::needArg() const {
@@ -51,9 +52,14 @@ double Option::getReal() const {
     return 0;
 }
 
-void OptionDB::addOption(Option* opt){
-    _index.emplace(opt->shortName(), opt);
-    _index.emplace(opt->LongName(), opt);
+void OptionDB::addOption(size_t id, Option* opt){
+    Assert(id == _holder.size());
+    if (opt->shortName() != "") {
+        _index.emplace(opt->shortName(), opt);
+    }
+    if (opt->LongName() != "") {
+        _index.emplace(opt->LongName(), opt);
+    }
     _holder.emplace_back(opt);
 }
 

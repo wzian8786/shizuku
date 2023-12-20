@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include "szk_assert.h"
 namespace util {
 class Option {
  public:
@@ -146,10 +147,15 @@ class OptionDB {
 
     static OptionDB& get() { return gSingleton; }
 
-    void addOption(Option* opt);
+    void addOption(size_t id, Option* opt);
     void parse(int argc, const char* argv[]);
 
     const ArgVec& getArgs() const { return _args; }
+
+    static const Option& getOption(size_t id) {
+        Assert(id < gSingleton._holder.size());
+        return *gSingleton._holder[id];
+    }
 
  private:
     typedef std::unordered_map<std::string, Option*> OptionIndex;

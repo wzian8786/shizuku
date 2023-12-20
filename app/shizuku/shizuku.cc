@@ -13,9 +13,17 @@ static void printBanner() {
     printf("\n");
 }
 
+enum {
+    kOptHelp = 0,
+    kOptDumpPostElabNL,
+    kOptDumpPreElabNL,
+};
+
 static void parseOption(int argc, const char* argv[]) {
     util::OptionDB& db = util::OptionDB::get();
-    db.addOption(new util::BoolOption("-h", "--help", false));
+    db.addOption(kOptHelp, new util::BoolOption("-h", "--help", false));
+    db.addOption(kOptDumpPostElabNL, new util::BoolOption("", "--dump-post-elab-nl", false));
+    db.addOption(kOptDumpPreElabNL, new util::BoolOption("", "--dump-pre-elab-nl", false));
     db.parse(argc, argv);
 }
 
@@ -38,8 +46,17 @@ int main(int argc, const char* argv[]) {
     parseNetlist();
     netlist::Netlist<netlist::NL_DEFAULT>& nl =
             netlist::Netlist<netlist::NL_DEFAULT>::get();
+    if (util::OptionDB::getOption(kOptDumpPreElabNL).enabled()) {
+        FILE* fp = fopen("pre-elab.nl", "w");
+        nl.print(fp, true);
+        fclose(fp);
+    }
     nl.elab();
-    nl.print(stdout, true);
-    nl.printFlatten(stdout);
+    if (util::OptionDB::getOption(kOptDumpPostElabNL).enabled()) {
+        FILE* fp = fopen("post-elab.nl", "w");
+        nl.print(fp, true);
+        fclose(fp);
+    }
+    //nl.printFlatten(stdout);
     return 0;
 }
