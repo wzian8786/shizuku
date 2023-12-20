@@ -52,7 +52,13 @@ void resolveNets() {
         for (auto nit : it->second) {
             Net<NL_DEFAULT>* net = nit.first;
             const NetContext& nc = nit.second;
-            module.addNet(net);
+            if (!module.addNet(net)) {
+                Logger::error("Duplicate net '%s' in module '%s'",
+                               net->getName().str().c_str(),
+                               module.getName().str().c_str());
+                error = true;
+                continue;
+            }
             const DataType& dt = net->getDataType();
             for (Vid pname : nc.upports) {
                 if (!module.hasPort(pname)) {

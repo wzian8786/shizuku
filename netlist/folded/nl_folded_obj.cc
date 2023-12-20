@@ -5,18 +5,27 @@
 namespace netlist {
 template<uint32_t NS>
 Port<NS>::Port(uint32_t id, Vid name, Direction dir, const DataType& dt) :
-            Base(id), _name(name), _dt(dt) {
+            Base(id), _dt(dt), _name(name) {
     setFlag(dir);
 }
 
 template<uint32_t NS>
-void Port<NS>::print(FILE* fp, bool indent) const {
+Port<NS>::Port(uint32_t id, size_t index, Direction dir, const DataType& dt) :
+            Base(id), _dt(dt), _index(index) {
+    setFlag(dir);
+}
+
+template<uint32_t NS>
+void Port<NS>::print(FILE* fp, bool indent, bool isModule) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
-    fprintf(fp, "(%%port %s %s)", getName().str().c_str(),
-                                isInput() ? "%input" :
-                                isOutput() ? "%output" : "%inout");
+    fprintf(fp, "(%%port ");
+    if (isModule) {
+        fprintf(fp, "%s ", getName().str().c_str());
+    }
+    fprintf(fp, "%s)", isInput() ? "%input" :
+                       isOutput() ? "%output" : "%inout");
     if (indent) {
         fprintf(fp, "\n");
     }
@@ -37,7 +46,7 @@ void Net<NS>::print(FILE* fp, bool indent) const {
         if (indent) {
             fprintf(fp, "%s", "        ");
         }
-        fprintf(fp, "(%%upport %s)", p->getName().str().c_str());
+        fprintf(fp, "(%%mport %s)", p->getName().str().c_str());
         if (indent) {
             fprintf(fp, "\n");
         }
@@ -60,7 +69,7 @@ void MInst<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "    ");
     }
-    fprintf(fp, "(%%hier %s %s)",getName().str().c_str(),
+    fprintf(fp, "(%%minst %s %s)",getName().str().c_str(),
                 getModule().getName().str().c_str());
     if (indent) {
         fprintf(fp, "\n");
@@ -84,7 +93,7 @@ void IPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
-    fprintf(fp, "(%%downport %s %s)", 
+    fprintf(fp, "(%%iport %s %s)", 
                 getMInst().getName().str().c_str(),
                 getPort().getName().str().c_str());
     if (indent) {
@@ -97,9 +106,9 @@ void PPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
-    fprintf(fp, "(%%pport %s %s)",
+    fprintf(fp, "(%%pport %s %lu)",
                 getPInst().getName().str().c_str(),
-                getPort().getName().str().c_str());
+                getPort().getIndex());
     if (indent) {
         fprintf(fp, "\n");
     }
@@ -114,7 +123,7 @@ void Module<NS>::print(FILE* fp, bool indent) const {
             fputc('\n', fp);
         }
     }
-    for (const auto& p : _ports) p->print(fp, indent);
+    for (const auto& p : _ports) p->print(fp, indent, true);
     for (const auto& p : _nets) p->print(fp, indent);
     for (const auto& p : _minsts) p->print(fp, indent);
     for (const auto& p : _pinsts) p->print(fp, indent);
@@ -275,7 +284,7 @@ void Process<NS>::print(FILE* fp, bool indent, Vid name) const {
     if (!_ports.empty() && indent) {
         fputc('\n', fp);
     }
-    for (const auto& p : _ports) p->print(fp, indent);
+    for (const auto& p : _ports) p->print(fp, indent, false);
     fputc(')', fp);
     if (indent) {
         fprintf(fp, "\n");

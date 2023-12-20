@@ -43,7 +43,7 @@ class DeletableVec {
         typedef typename std::conditional<C, const std::vector<T>,
                                         std::vector<T>>::type vectype;
 
-        IT(vectype* v, size_t i) : index(0), vec(v) {
+        IT(vectype* v, size_t i) : index(i), vec(v) {
             while (index < vec->size()) {
                 if ((*vec)[index]) break;
                 index++;
@@ -59,7 +59,7 @@ class DeletableVec {
         }
 
         bool operator !=(const IT& a) const {
-            return vec != a.vec || index == a.index;
+            return vec != a.vec || index != a.index;
         }
 
         rtype& operator *() const {

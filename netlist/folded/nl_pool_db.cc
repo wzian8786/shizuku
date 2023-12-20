@@ -140,15 +140,16 @@ Vid PoolDB<NS>::createMultDrive(size_t input, size_t io,
     if (!hasProcess(name)) {
         Process<NS>* process = createProcess(name);
         Assert(process);
+        size_t index = 0;
         for (size_t i = 0; i < input; ++i) {
             uint32_t id;
-            Port<NS>* port = new (id) Port<NS>(id, Vid("S$Port"),
+            Port<NS>* port = new (id) Port<NS>(id, index++,
                     Port<NS>::kPortInput, dt);
             process->addPort(port);
         }
         for (size_t i = 0; i < io; ++i) {
             uint32_t id;
-            Port<NS>* port = new (id) Port<NS>(id, Vid("S$Port"),
+            Port<NS>* port = new (id) Port<NS>(id, index++,
                     Port<NS>::kPortInout, dt);
             process->addPort(port);
         }

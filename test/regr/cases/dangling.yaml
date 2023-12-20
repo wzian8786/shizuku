@@ -1,0 +1,2 @@
+run: "shizuku dangling.nl"
+check: "diff dangling.run.log dangling.exp"
