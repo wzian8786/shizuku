@@ -67,11 +67,13 @@ class Port : public Base {
     };
 
     Port(uint32_t id, Vid name, Direction dir, const DataType& dt);
-    Port(uint32_t id, size_t index, Direction dir, const DataType& dt);
+    Port(uint32_t id, uint32_t index, Direction dir, const DataType& dt);
     const DataType& getDataType() const { return _dt; }
 
     Vid getName() const { return _name; }
-    size_t getIndex() const { return _index; }
+    uint32_t getIndex() const { return _index.i; }
+    uint32_t getDirIndex() const { return _index.d; }
+    void setDirIndex(uint32_t d) { _index.d = d; }
 
     bool isInput() const { return testFlag(kPortInput); }
     bool isOutput() const { return testFlag(kPortOutput); }
@@ -87,7 +89,10 @@ class Port : public Base {
     const DataType&     _dt;
     union {
         Vid             _name;
-        size_t          _index;
+        struct {
+            uint32_t    i;
+            uint32_t    d;
+        } _index;
     };
 };
 

@@ -57,11 +57,12 @@ template<uint32_t NS>
 //    annotate it on module ports, otherwise annotate it on the nets of this link. 
 class ElabAnnotator {
  public:
-    ElabAnnotator() :
+    explicit ElabAnnotator(const ElabDB<NS>& db) :
         _portAnno(Port<NS>::Pool::get().getMaxSize()),
         _netAnno(Net<NS>::Pool::get().getMaxSize()),
         _portNexuses(Module<NS>::Pool::get().getMaxSize()),
-        _netNexuses(Module<NS>::Pool::get().getMaxSize()) {}
+        _netNexuses(Module<NS>::Pool::get().getMaxSize()),
+        _db(db) {}
 
  private:
     struct Nexus {
@@ -69,14 +70,16 @@ class ElabAnnotator {
         ~Nexus() {}
         bool                            hasSibling;
         uint64_t                        driver;
-        std::vector<uint64_t>           readers;
+        std::vector<std::pair<
+            uint64_t, uint64_t>>        readers;
     };
+    typedef std::shared_ptr<Nexus> NexusPtr;
     struct IPortNexus;
     struct NetNexus;
     struct NetNexus {
-        NetNexus(Nexus* nx, const Net<NS>& n) :
+        NetNexus(NexusPtr nx, const Net<NS>& n) :
                  nexus(nx), net(n) {}
-        Nexus*                          nexus;
+        NexusPtr                        nexus;
         const Net<NS>&                  net;
         std::vector<const IPortNexus*>  ports;
     };
@@ -88,7 +91,6 @@ class ElabAnnotator {
         std::vector<NetNexus*>    nets;
     };
 
-    typedef std::shared_ptr<Nexus> NexusPtr;
     typedef std::vector<std::shared_ptr<Nexus>> Annotation;
     typedef std::vector<std::vector<std::unique_ptr<NetNexus>>> NetNexusVec;
     typedef std::vector<std::vector<std::unique_ptr<IPortNexus>>> IPortNexusVec;
@@ -110,7 +112,7 @@ class ElabAnnotator {
             if (!pnexus) continue;
             if (pnexus->hasSibling) {
                 if (!netNexus) {
-                    netNexus = new NetNexus(nexus.get(), net);
+                    netNexus = new NetNexus(nexus, net);
                     _netNexuses[moduleID].emplace_back(netNexus);
                 }
                 auto dit = portNexusIndex.find(pnexus.get());
@@ -123,6 +125,33 @@ class ElabAnnotator {
                 portNexus->nets.emplace_back(netNexus);
                 netNexus->ports.emplace_back(portNexus);
                 hasSibling = true;
+            } else {
+                mergeNexus(*nexus, *pnexus, iport);
+            }
+        }
+
+        const typename Net<NS>::PPortHolder& pports = net.getPPorts();
+        for (auto it = pports.begin(); it != pports.end(); ++it) {
+            const PPort<NS>& pport = **it;
+            const PInst<NS>& pinst = pport.getPInst();
+            typename Port<NS>::Direction dir = pport.getPort().getDirection();
+            uint64_t offset = _db.getCellOffset(pinst);
+            uint32_t dirIndex = pport.getPort().getDirIndex();
+            switch (dir) {
+            case Port<NS>::kPortInput:
+                nexus->readers.emplace_back(offset, dirIndex);
+                break;
+            case Port<NS>::kPortOutput:
+                Assert(!nexus->driver);
+                nexus->driver = offset + dirIndex;
+                break;
+            case Port<NS>::kPortInout:
+                Assert(!nexus->driver);
+                nexus->driver = offset + dirIndex;
+                nexus->readers.emplace_back(offset, dirIndex);
+                break;
+            default:
+                ASSERT(0);
             }
         }
 
@@ -148,10 +177,11 @@ class ElabAnnotator {
         for (const auto& it : netNexuses) {
             const NetNexus& netNexus = *it;
             if (visited.find(&netNexus) != visited.end()) continue;
+            NexusPtr link(new Nexus());
             std::vector<const NetNexus*> todo = { &netNexus };
             std::vector<const Net<NS>*> nets;
             std::vector<const Port<NS>*> mports;
-            std::unordered_set<Nexus*> link;
+            util::Logger::debug("(elab) annotating create link");
             while (!todo.empty()) {
                 const NetNexus* nexus = todo.back();
                 todo.pop_back();
@@ -160,7 +190,8 @@ class ElabAnnotator {
     
                 const Net<NS>& net = netNexus.net;
                 nets.emplace_back(&net);
-                link.emplace(netNexus.nexus);
+                util::Logger::debug("(elab)    net: %s", net.getName().str().c_str());
+                mergeNexus(*link, *netNexus.nexus);
     
                 const typename Net<NS>::MPortVec& mportVec = net.getMPorts();
                 for (auto it = mportVec.begin(); it != mportVec.end(); ++it) {
@@ -168,16 +199,45 @@ class ElabAnnotator {
                 }
     
                 for (const auto& portNexus : netNexus.ports) {
-                    link.emplace(portNexus->nexus);
+                    util::Logger::debug("(elab)    port: %s",
+                            portNexus->port.getPort().getName().str().c_str());
+                    mergeNexus(*link, *portNexus->nexus, portNexus->port);
                     for (const auto& n : portNexus->nets) {
                         todo.emplace_back(n);
                     }
                 }
             }
+            if (mports.empty()) {
+                for (auto net : nets) {
+                    _netAnno[net->getID()] = link;
+                }
+            } else {
+                link->hasSibling = mports.size() > 1;
+                for (auto port : mports) {
+                    _portAnno[port->getID()] = link;
+                }
+            }
         }
     }
 
-    void mergeNexus(Nexus& nx, Nexus& sub, const IPort<NS>& port) {
+    void mergeNexus(Nexus& dst, Nexus& src, const IPort<NS>& port) {
+        Assert(!dst.driver || !src.driver);
+        const MInst<NS>& inst = port.getMInst();
+        uint64_t offset = _db.getCellOffset(inst);
+        if (src.driver) {
+            dst.driver = offset + src.driver;
+        }
+        for (const auto& p : src.readers) {
+            dst.readers.emplace_back(p.first + offset, p.second);
+        }
+    }
+
+    void mergeNexus(Nexus& dst, Nexus& src) {
+        Assert(!dst.driver || !src.driver);
+        dst.driver = src.driver;
+        for (const auto& p : src.readers) {
+            dst.readers.emplace_back(p);
+        }
     }
 
  public:
@@ -199,6 +259,7 @@ class ElabAnnotator {
     Annotation                          _netAnno;
     IPortNexusVec                       _portNexuses;
     NetNexusVec                         _netNexuses;
+    const ElabDB<NS>&                   _db;
 };
 
 template<uint32_t NS>
@@ -398,8 +459,19 @@ void ElabDB<NS>::elab() {
     genIndex();
 
     // 6. annotate the design
-    ElabAnnotator<NS> anno;
-    anno.annotate(topo);
+    ElabAnnotator<NS>(*this).annotate(topo);
+}
+
+template<uint32_t NS>
+uint64_t ElabDB<NS>::getCellOffset(const MInst<NS>& inst) const {
+    Assert(inst.getID() < _cellMInstOffset.size());
+    return _cellMInstOffset[inst.getID()];
+}
+
+template<uint32_t NS>
+uint64_t ElabDB<NS>::getCellOffset(const PInst<NS>& inst) const {
+    Assert(inst.getID() < _cellPInstOffset.size());
+    return _cellPInstOffset[inst.getID()];
 }
 
 template<uint32_t NS>
@@ -407,11 +479,13 @@ void ElabDB<NS>::resetWeights() {
     _dfs.clear();
     _dfsOffset.clear();
     _cellNum.clear();
-    _cellOffset.clear();
+    _cellMInstOffset.clear();
+    _cellPInstOffset.clear();
     _dfs.resize(Module<NS>::Pool::get().getMaxSize());
     _dfsOffset.resize(MInst<NS>::Pool::get().getMaxSize());
     _cellNum.resize(Module<NS>::Pool::get().getMaxSize());
-    _cellOffset.resize(MInst<NS>::Pool::get().getMaxSize());
+    _cellMInstOffset.resize(MInst<NS>::Pool::get().getMaxSize());
+    _cellPInstOffset.resize(PInst<NS>::Pool::get().getMaxSize());
 }
 
 template<uint32_t NS>
@@ -425,6 +499,7 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
         for (auto it = pinsts.begin(); it != pinsts.end(); ++it) {
             const PInst<NS>& pinst = **it;
             const Process<NS>& process = pinst.getProcess();
+            _cellPInstOffset[pinst.getID()] = cellNum;
             cellNum += Cell::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
                                         process.getNumOfOutput() + process.getNumOfInout());
         };
@@ -433,7 +508,7 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
             const MInst<NS>& cinst = **it;
             const Module<NS>& cmod = cinst.getModule();
             _dfsOffset[cinst.getID()] = dfs;
-            _cellOffset[cinst.getID()] = cellNum;
+            _cellMInstOffset[cinst.getID()] = cellNum;
 
             Assert(_dfs[cmod.getID()]);
             dfs += _dfs[cmod.getID()];
