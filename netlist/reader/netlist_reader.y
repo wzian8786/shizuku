@@ -286,7 +286,7 @@ process_item
 process_port
     : '(' T_PORT direction ')' {
         uint32_t id;
-        Port* port = new (id) Port(id, gCtx.portId++, gCtx.direction, Netlist::get().getTypeScalar());
+        Port* port = new (id) Port(id, ++gCtx.portId, gCtx.direction, Netlist::get().getTypeScalar());
         bool suc = gCtx.process->addPort(port);
         Assert(suc);
     }

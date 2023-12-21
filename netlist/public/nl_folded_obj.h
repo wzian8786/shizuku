@@ -321,12 +321,10 @@ class Process : public Base{
 
     Process(uint32_t id);
 
-    uint32_t getNumOfInput() const { return _numInput; }
-    uint32_t getNumOfOutput() const { return _numOutput; }
-    uint32_t getNumOfInout() const { return _numInout; }
-    uint32_t getNumOfPorts() const {
-        return _numInput + _numOutput + _numInout;
-    }
+    uint32_t getNumOfInput() const { return _inputIndex.validSize(); }
+    uint32_t getNumOfOutput() const { return _outputIndex.validSize(); }
+    uint32_t getNumOfInout() const { return _inoutIndex.validSize(); }
+    uint32_t getNumOfPorts() const { return _ports.validSize(); }
 
     void setType(Type type);
     bool isComb() const { return testFlag(kTypeComb); }
@@ -335,7 +333,9 @@ class Process : public Base{
 
     bool addPort(Port<NS>* port);
     const Port<NS>& getPort(size_t id) const;
+    const Port<NS>& getPort(size_t id, typename Port<NS>::Direction dir) const;
     Port<NS>& getPort(size_t id);
+    Port<NS>& getPort(size_t id, typename Port<NS>::Direction dir);
 
     void print(FILE* fp, bool indent, Vid name) const;
 
@@ -344,10 +344,12 @@ class Process : public Base{
     const PortHolder& getPorts() const { return _ports; }
     PortHolder& getPorts() { return _ports; }
 
+    typedef util::DeletableVec<uint32_t> IndexVec;
+
  private:
-    uint32_t                _numInput;
-    uint32_t                _numOutput;
-    uint32_t                _numInout;
+    IndexVec                _inputIndex;
+    IndexVec                _outputIndex;
+    IndexVec                _inoutIndex;
     PortHolder              _ports;
 };
 }

@@ -202,11 +202,11 @@ class ElabAnnotator {
 };
 
 template<uint32_t NS>
-class MultDriveCreator {
+class NetResolverCreator {
  public:
-    MultDriveCreator() {}
+    NetResolverCreator() {}
 
-    void createMultDriveForNet(Module<NS>& module, Net<NS>& net) {
+    void createNetResolverForNet(Module<NS>& module, Net<NS>& net) {
         util::Logger::debug("(elab) creating mult-drive for net %s(%u)",
                     net.getName().str().c_str(), module.getID());
         const typename Net<NS>::IPortHolder& iports = net.getIPorts();
@@ -244,26 +244,29 @@ class MultDriveCreator {
         if (drive <= 1) return;
 
         // 3. get multDrive processs
-        Vid procName = Netlist<NS>::get().createMultDrive(drive - io, io, net.getDataType());
+        Vid procName = Netlist<NS>::get().createNetResolver(drive - io, io, net.getDataType());
         Process<NS>& process = Netlist<NS>::get().getProcess(procName);
 
         // 4. create multDrive processs inst
         uint32_t id;
-        PInst<NS>* pinst = new (id) PInst<NS>(id, Vid("MD").derive(), procName, module, process);
+        PInst<NS>* pinst = new (id) PInst<NS>(id, Vid("NR").derive(), procName, module, process);
         util::Logger::debug("(elab) creating mult-drive instance %s(%u)",
                 pinst->getName().str().c_str(), pinst->getID());
+        module.addPInst(pinst);
 
         // 5. connect drivers to the input port of multiDrive instance
         size_t inputPortId = 0;
-        size_t inoutPortId = drive - io;
+        size_t inoutPortId = 0;
         for (size_t index: diports) {
             const Port<NS>& port = iports[index]->getPort();
             Net<NS>* dnet = new (id) Net<NS>(id, net.getName().derive(), module, net.getDataType());
             net.transferIPort(index, *dnet);
 
             size_t portId = port.isOutput() ? inputPortId++ : inoutPortId++;
-            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            typename Port<NS>::Direction dir = port.isOutput() ? Port<NS>::kPortInput : Port<NS>::kPortOutput;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId, dir));
             dnet->addPPort(pport);
+            module.addNet(dnet);
         }
 
         for (size_t index: dmports) {
@@ -272,8 +275,10 @@ class MultDriveCreator {
             net.transferMPort(index, *dnet);
 
             size_t portId = port->isInput() ? inputPortId++ : inoutPortId++;
-            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            typename Port<NS>::Direction dir = port->isInput() ? Port<NS>::kPortInput : Port<NS>::kPortOutput;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId, dir));
             dnet->addPPort(pport);
+            module.addNet(dnet);
         }
         for (size_t index: dpports) {
             const Port<NS>& port = pports[index]->getPort();
@@ -281,18 +286,23 @@ class MultDriveCreator {
             net.transferPPort(index, *dnet);
 
             size_t portId = port.isOutput() ? inputPortId++ : inoutPortId++;
-            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId));
+            typename Port<NS>::Direction dir = port.isOutput() ? Port<NS>::kPortInput : Port<NS>::kPortOutput;
+            PPort<NS>* pport = new (id) PPort<NS>(id, *pinst, process.getPort(portId, dir));
             dnet->addPPort(pport);
+            module.addNet(dnet);
         }
+        uint32_t id2;
+        PPort<NS>* pport = new (id2) PPort<NS>(id2, *pinst, process.getPort(0, Port<NS>::kPortOutput));
+        net.addPPort(pport);
     }
 
-    void createMultDrive(const std::vector<Module<NS>*>& topo) {
+    void createNetResolver(const std::vector<Module<NS>*>& topo) {
         for (auto module : topo) {
             const typename Module<NS>::NetHolder& nets = module->getNets();
             util::Logger::debug("(elab) creating mult-drive for module %s(%u)",
                     module->getName().str().c_str(), module->getID());
             for (auto it = nets.begin(); it != nets.end(); ++it) {
-                createMultDriveForNet(*module, **it);
+                createNetResolverForNet(*module, **it);
             }
         }
     }
@@ -379,7 +389,7 @@ void ElabDB<NS>::elab() {
     DanglingNetCreator<NS>().createDanglingNet();
 
     // 3. create multiple drive
-    MultDriveCreator<NS>().createMultDrive(topo);
+    NetResolverCreator<NS>().createNetResolver(topo);
 
     // 4. calculate the weights
     genWeights(topo);

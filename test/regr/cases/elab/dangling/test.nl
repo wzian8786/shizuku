@@ -3,16 +3,7 @@
         (%iport mi1 p1)
     )
     (%net n2
-        (%pport pi1 0)
-    )
-    (%net S$$Z_0
-        (%iport mi1 p2)
-    )
-    (%net S$$Z_1
-        (%iport mi2 p3)
-    )
-    (%net S$$Z_2
-        (%pport pi1 1)
+        (%pport pi1 2)
     )
     (%minst mi1 m2)
     (%minst mi2 m3)
