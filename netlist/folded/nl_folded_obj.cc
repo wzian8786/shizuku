@@ -10,8 +10,8 @@ Port<NS>::Port(uint32_t id, Vid name, Direction dir, const DataType& dt) :
 }
 
 template<uint32_t NS>
-Port<NS>::Port(uint32_t id, size_t index, Direction dir, const DataType& dt) :
-            Base(id), _dt(dt), _index(index) {
+Port<NS>::Port(uint32_t id, uint32_t index, Direction dir, const DataType& dt) :
+            Base(id), _dt(dt), _index({index, 0}) {
     setFlag(dir);
 }
 
@@ -106,7 +106,7 @@ void PPort<NS>::print(FILE* fp, bool indent) const {
     if (indent) {
         fprintf(fp, "%s", "        ");
     }
-    fprintf(fp, "(%%pport %s %lu)",
+    fprintf(fp, "(%%pport %s %u)",
                 getPInst().getName().str().c_str(),
                 getPort().getIndex());
     if (indent) {
@@ -250,10 +250,13 @@ bool Process<NS>::addPort(Port<NS>* port) {
     size_t index = _ports.size();
     _ports.emplace_back(port);
     if (port->isInput()) {
+        port->setDirIndex(_inputIndex.size());
         _inputIndex.emplace_back(index);
     } else if (port->isOutput()) {
+        port->setDirIndex(_outputIndex.size());
         _outputIndex.emplace_back(index);
     } else if (port->isInout()) {
+        port->setDirIndex(_inoutIndex.size());
         _inoutIndex.emplace_back(index);
     } else {
         Assert(0);

@@ -11,6 +11,9 @@ class ElabDB {
 
     void elab();
 
+    uint64_t getCellOffset(const MInst<NS>& inst) const;
+    uint64_t getCellOffset(const PInst<NS>& inst) const;
+
     void printFlatten(FILE* fp) const;
 
  private:
@@ -27,7 +30,8 @@ class ElabDB {
     std::vector<size_t>             _dfs;
     std::vector<size_t>             _dfsOffset;
     std::vector<size_t>             _cellNum;
-    std::vector<size_t>             _cellOffset;
+    std::vector<size_t>             _cellMInstOffset;
+    std::vector<size_t>             _cellPInstOffset;
     std::vector<uint32_t>           _index;
 };
 }
