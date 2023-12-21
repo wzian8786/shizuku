@@ -16,8 +16,6 @@ class DataTypeDB {
     const DataType& persist(DataType* dt);
 
  private:
-    static DataTypeDB gSingleton; 
-
     typedef std::unordered_set<DataType*, DataType::Hash,
                                DataType::Equal> DataTypeSet;
     typedef std::vector<std::unique_ptr<DataType>> DataTypeVec;
