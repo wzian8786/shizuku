@@ -22,10 +22,10 @@ class DeletableVec {
     }
 
     T del(size_t id) {
-        T ret = nullptr;
+        T ret = 0;
         if (_vec[id]) {
             ret = std::move(_vec[id]);
-            _vec[id] = nullptr;
+            _vec[id] = 0;
             _deleted++;
         }
         return ret;

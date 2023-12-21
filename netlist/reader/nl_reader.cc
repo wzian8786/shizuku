@@ -16,9 +16,9 @@ void NetlistReader::parse(FILE* fp) {
     yyparse();
 }
 void NetlistReader::finalize() {
+    sanityCheck();
     resolveNets();
     buildTops();
-    sanityCheck();
 }
 }
 }

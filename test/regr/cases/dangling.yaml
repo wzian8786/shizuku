@@ -1,3 +1,0 @@
-run: "shizuku --dump-post-elab-nl dangling.nl"
-check: "diff post-elab.nl dangling.exp"
-clean: "rm -rf post-elab.nl"

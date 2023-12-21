@@ -28,7 +28,7 @@ class PoolDB {
     Process<NS>& getProcess(Vid name);
     const Process<NS>& getProcess(Vid name) const;
 
-    Vid createMultDrive(size_t input, size_t io, const DataType& dt);
+    Vid createNetResolver(size_t input, size_t io, const DataType& dt);
 
     void clear();
     void gc();

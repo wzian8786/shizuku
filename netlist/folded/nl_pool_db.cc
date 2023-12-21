@@ -126,10 +126,10 @@ const Process<NS>& PoolDB<NS>::getProcess(Vid name) const {
 }
 
 template<uint32_t NS>
-Vid PoolDB<NS>::createMultDrive(size_t input, size_t io,
-                             const DataType& dt) {
+Vid PoolDB<NS>::createNetResolver(size_t input, size_t io,
+                                  const DataType& dt) {
     std::stringstream ss;
-    ss << Vid(kVidSM).str() << std::hex << input;
+    ss << "S$N" << std::hex << input;
     if (io) {
         ss << "_" << io;
     }
@@ -141,18 +141,20 @@ Vid PoolDB<NS>::createMultDrive(size_t input, size_t io,
         Process<NS>* process = createProcess(name);
         Assert(process);
         size_t index = 0;
+        uint32_t id;
         for (size_t i = 0; i < input; ++i) {
-            uint32_t id;
-            Port<NS>* port = new (id) Port<NS>(id, index++,
+            Port<NS>* port = new (id) Port<NS>(id, ++index,
                     Port<NS>::kPortInput, dt);
             process->addPort(port);
         }
         for (size_t i = 0; i < io; ++i) {
-            uint32_t id;
-            Port<NS>* port = new (id) Port<NS>(id, index++,
+            Port<NS>* port = new (id) Port<NS>(id, ++index,
                     Port<NS>::kPortInout, dt);
             process->addPort(port);
         }
+        // add output port
+        process->addPort(new (id) Port<NS>(id, ++index,
+                Port<NS>::kPortOutput, dt));
     }
     return name;
 }

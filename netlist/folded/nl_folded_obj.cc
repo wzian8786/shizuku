@@ -237,9 +237,7 @@ PInst<NS>& Module<NS>::getPInst(Vid iname) {
 template<uint32_t NS>
 Process<NS>::Process(uint32_t id) :
             Base(id),
-            _numInput(0),
-            _numOutput(0),
-            _numInout(0) {
+            _ports(1) {
 }
 
 template<uint32_t NS>
@@ -249,13 +247,14 @@ void Process<NS>::setType(Type type) {
 
 template<uint32_t NS>
 bool Process<NS>::addPort(Port<NS>* port) {
+    size_t index = _ports.size();
     _ports.emplace_back(port);
     if (port->isInput()) {
-        _numInput++;
+        _inputIndex.emplace_back(index);
     } else if (port->isOutput()) {
-        _numOutput++;
+        _outputIndex.emplace_back(index);
     } else if (port->isInout()) {
-        _numInout++;
+        _inoutIndex.emplace_back(index);
     } else {
         Assert(0);
     }
@@ -264,14 +263,60 @@ bool Process<NS>::addPort(Port<NS>* port) {
 
 template<uint32_t NS>
 const Port<NS>& Process<NS>::getPort(size_t id) const {
-    Assert(id < _ports.size());
+    Assert(id && id < _ports.size());
     Assert(_ports[id]);
     return *_ports[id];
 }
 
 template<uint32_t NS>
+const Port<NS>& Process<NS>::getPort(size_t id, typename Port<NS>::Direction dir) const {
+    size_t index = 0;
+    switch (dir) {
+    case Port<NS>::kPortInput:
+        Assert(id < _inputIndex.size());
+        index = _inputIndex[id];
+        break;
+    case Port<NS>::kPortOutput:
+        Assert(id < _outputIndex.size());
+        index = _outputIndex[id];
+        break;
+    case Port<NS>::kPortInout:
+        Assert(id < _inoutIndex.size());
+        index = _inoutIndex[id];
+        break;
+    default:
+        ASSERT(0);
+    }
+    Assert(index && index < _ports.size());
+    return *_ports[index];
+}
+
+template<uint32_t NS>
+Port<NS>& Process<NS>::getPort(size_t id, typename Port<NS>::Direction dir) {
+    size_t index = 0;
+    switch (dir) {
+    case Port<NS>::kPortInput:
+        Assert(id < _inputIndex.size());
+        index = _inputIndex[id];
+        break;
+    case Port<NS>::kPortOutput:
+        Assert(id < _outputIndex.size());
+        index = _outputIndex[id];
+        break;
+    case Port<NS>::kPortInout:
+        Assert(id < _inoutIndex.size());
+        index = _inoutIndex[id];
+        break;
+    default:
+        ASSERT(0);
+    }
+    Assert(index && index < _ports.size());
+    return *_ports[index];
+}
+
+template<uint32_t NS>
 Port<NS>& Process<NS>::getPort(size_t id) {
-    Assert(id < _ports.size());
+    Assert(id && id < _ports.size());
     Assert(_ports[id]);
     return *_ports[id];
 }

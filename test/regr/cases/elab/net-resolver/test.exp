@@ -1,0 +1,37 @@
+(%module m1
+    (%port p1 %input)
+    (%net n1
+        (%pport S$$NR_2 4)
+    )
+    (%net S$$Z_1
+        (%pport pi1 1)
+    )
+    (%net S$$n1_3
+        (%iport mi1 p1)
+        (%pport S$$NR_2 1)
+    )
+    (%net S$$n1_4
+        (%mport p1)
+        (%pport S$$NR_2 2)
+    )
+    (%net S$$n1_5
+        (%pport pi1 2)
+        (%pport S$$NR_2 3)
+    )
+    (%minst mi1 m2)
+    (%pinst pi1 proc1)
+    (%pinst S$$NR_2 S$N3)
+)
+(%module m2
+    (%port p1 %output)
+)
+(%process proc1 %seq
+    (%port %input)
+    (%port %output)
+)
+(%process S$N3 %call
+    (%port %input)
+    (%port %input)
+    (%port %input)
+    (%port %output)
+)

@@ -2,7 +2,6 @@
 namespace netlist {
 enum PreVid {
     kVidSRoot,
-    kVidSM,
 };
 class PreVidDB {
  public:

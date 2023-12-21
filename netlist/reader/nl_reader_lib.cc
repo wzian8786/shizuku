@@ -125,7 +125,12 @@ void resolveNets() {
                 Assert(&pinst->getParent() == &module);
 
                 Process<NL_DEFAULT>& process = pinst->getProcess();
-                if (index >= process.getNumOfPorts()) {
+                if (!index) {
+                    Logger::error("Invalid process port index '0', the index starts from 1");
+                    error = true;
+                    continue;
+                }
+                if (index > process.getNumOfPorts()) {
                     Logger::error("Process '%s' doesn't have the '%lu'th port",
                                    pinst->getProcessName().str().c_str(), index);
                     error = true;
