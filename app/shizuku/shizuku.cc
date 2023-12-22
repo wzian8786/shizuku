@@ -57,6 +57,6 @@ int main(int argc, const char* argv[]) {
         nl.print(fp, true);
         fclose(fp);
     }
-    //nl.printFlatten(stdout);
+    nl.debugPrint();
     return 0;
 }

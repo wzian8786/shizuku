@@ -40,7 +40,7 @@ class Base {
 static_assert(sizeof(Base) == Base::kNextOffset, "size mismatch");
 
 #define ManagerByPool(T) \
-    typedef util::Pool<T, NS, NlPoolSpec, true> Pool; \
+    typedef util::Pool<T, NS, NlPoolSpec, util::kGC1> Pool; \
     static void* operator new(std::size_t count, uint32_t& id) { \
         Assert(count == sizeof(T)); \
         id = Pool::get().New(); \

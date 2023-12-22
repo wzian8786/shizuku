@@ -1,14 +1,15 @@
 #include "nl_elab_db.h"
 #include <memory>
+#include <deque>
 #include <unordered_set>
 #include <unordered_map>
 #include "nl_folded_obj.h"
 #include "nl_netlist.h"
 #include "nl_vertex.h"
 #include "nl_vid_db.h"
+#include "nl_vertex.h"
 #include "szk_log.h"
 namespace netlist {
-template<uint32_t NS>
 // The basic idea of the algorithms is that:
 // 1. For each net, if it doesn't connect to any MPort(module port), means 
 //    all the driver & readers must be in the sub-tree of current module.
@@ -55,6 +56,7 @@ template<uint32_t NS>
 //    These IPortNexuses & NetNexuses are merged together, and called a link.
 // 4. For each link, it works just as normal Nexus. If it connected to module ports,
 //    annotate it on module ports, otherwise annotate it on the nets of this link. 
+template<uint32_t NS>
 class ElabAnnotator {
  public:
     explicit ElabAnnotator(const ElabDB<NS>& db) :
@@ -64,7 +66,7 @@ class ElabAnnotator {
         _netNexuses(Module<NS>::Pool::get().getMaxSize()),
         _db(db) {}
 
- private:
+ public:
     struct Nexus {
         Nexus() : hasSibling(false), driver(0) {}
         ~Nexus() {}
@@ -73,6 +75,10 @@ class ElabAnnotator {
         std::vector<std::pair<
             uint64_t, uint64_t>>        readers;
     };
+    typedef std::vector<std::shared_ptr<Nexus>> Annotation;
+    const Annotation& getAnnotation() const { return _netAnno; }
+
+ private:
     struct PairHash {
         size_t operator()(const std::pair<Nexus*, uint32_t>& p) const {
             return std::hash<size_t>()((size_t)p.first) ^
@@ -98,7 +104,6 @@ class ElabAnnotator {
         std::vector<NetNexus*>          nets;
     };
 
-    typedef std::vector<std::shared_ptr<Nexus>> Annotation;
     typedef std::vector<std::vector<std::unique_ptr<NetNexus>>> NetNexusVec;
     typedef std::vector<std::vector<std::unique_ptr<IPortNexus>>> IPortNexusVec;
     typedef std::unordered_map<std::pair<Nexus*, uint32_t>,
@@ -145,6 +150,7 @@ class ElabAnnotator {
             const PPort<NS>& pport = **it;
             const PInst<NS>& pinst = pport.getPInst();
             typename Port<NS>::Direction dir = pport.getPort().getDirection();
+            const Process<NS>& process = pinst.getProcess();
             uint64_t offset = _db.getCellOffset(pinst);
             uint32_t dirIndex = pport.getPort().getDirIndex();
             switch (dir) {
@@ -157,7 +163,7 @@ class ElabAnnotator {
                 break;
             case Port<NS>::kPortInout:
                 Assert(!nexus->driver);
-                nexus->driver = offset + dirIndex;
+                nexus->driver = offset + process.getNumOfOutput() + dirIndex;
                 nexus->readers.emplace_back(offset, dirIndex);
                 break;
             default:
@@ -479,7 +485,11 @@ void ElabDB<NS>::elab() {
     genIndex();
 
     // 6. annotate the design
-    ElabAnnotator<NS>(*this).annotate(topo);
+    ElabAnnotator<NS> anno(*this);
+    anno.annotate(topo);
+
+    // 7. Allocate Vertex
+    createVertex(anno);
 }
 
 template<uint32_t NS>
@@ -509,18 +519,80 @@ void ElabDB<NS>::resetWeights() {
 }
 
 template<uint32_t NS>
+void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
+    const Module<NS>& root = Netlist<NS>::get().getRoot();
+    size_t toAlloc = _cellNum[root.getID()] + kReservedCell;
+    Vertex<NS>::Pool::get().New(toAlloc);
+
+    const typename ElabAnnotator<NS>::Annotation& anno = a.getAnnotation();
+    std::deque<const Module<NS>*> todo = { &root };
+    
+    uint64_t dfs = 0;
+    uint64_t addr = kReservedCell;
+    while (!todo.empty()) {
+        const Module<NS>& module = *todo.front();
+        todo.pop_front();
+        const typename Module<NS>::PInstHolder& pinsts = module.getPInsts();
+        for (const auto& p : pinsts) {
+            const PInst<NS>& inst = *p;
+            const Process<NS>& process = inst.getProcess();
+            uint64_t vaddr = addr + _cellPInstOffset[inst.getID()];
+            size_t size = Cell<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
+                                               process.getNumOfOutput() + process.getNumOfInout());
+            Vertex<NS>* vertex = Vertex<NS>::get(vaddr);
+            vertex->init(dfs, process.getID(), inst.getName(), size);
+        }
+
+        const typename Module<NS>::MInstHolder& minsts = module.getMInsts();
+        for (const auto& p : minsts) {
+            const MInst<NS>& inst = *p;
+            dfs += _dfsOffset[inst.getID()];
+            addr += _cellMInstOffset[inst.getID()];
+            todo.emplace_back(&inst.getModule());
+        }
+    }
+
+    addr = kReservedCell;
+    todo = { &root };
+    while (!todo.empty()) {
+        const Module<NS>& module = *todo.front();
+        todo.pop_front();
+
+        const typename Module<NS>::NetHolder& nets = module.getNets();
+        for (const auto& p : nets) {
+            const Net<NS>& net = *p;
+            Assert(net.getID() <= anno.size());
+            const typename ElabAnnotator<NS>::Nexus* nexus = anno[net.getID()].get();
+            if (!nexus) continue;
+            for (const auto& p : nexus->readers) {
+                uint64_t vaddr = addr + p.first;
+                Vertex<NS>& vertex = *Vertex<NS>::get(vaddr);
+                vertex.setDriver(nexus->driver, p.second);
+            }
+        }
+
+        const typename Module<NS>::MInstHolder& minsts = module.getMInsts();
+        for (const auto& p : minsts) {
+            const MInst<NS>& inst = *p;
+            addr += _cellMInstOffset[inst.getID()];
+            todo.emplace_back(&inst.getModule());
+        }
+    }
+}
+
+template<uint32_t NS>
 void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
     resetWeights();
     for (auto mod : topo) {
         const typename Module<NS>::MInstHolder& insts = mod->getMInsts();
         const typename Module<NS>::PInstHolder& pinsts = mod->getPInsts();
         size_t dfs = 1;
-        size_t cellNum = kReservedCell;
+        size_t cellNum = 0;
         for (auto it = pinsts.begin(); it != pinsts.end(); ++it) {
             const PInst<NS>& pinst = **it;
             const Process<NS>& process = pinst.getProcess();
             _cellPInstOffset[pinst.getID()] = cellNum;
-            cellNum += Cell::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
+            cellNum += Cell<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
                                         process.getNumOfOutput() + process.getNumOfInout());
         };
 
@@ -536,6 +608,7 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
         }
         _dfs[mod->getID()] = dfs;
         _cellNum[mod->getID()] = cellNum;
+        
     }
 }
 
@@ -563,8 +636,43 @@ void ElabDB<NS>::visitInst(const MInst<NS>& inst, size_t dfs) {
 }
 
 template<uint32_t NS>
-void ElabDB<NS>::printFlatten(FILE* fp) const {
-    printf("#0 %s(%s)\n", Vid(kVidSRoot).str().c_str(),
+void ElabDB<NS>::debugPrint() const {
+    Assert(_dfs.size() == _cellNum.size());
+    printf("%s", "------------- Module -----------------\n");
+    for (size_t i = 0; i < _dfs.size(); ++i) {
+        const Module<NS>& module = Module<NS>::Pool::get()[i];
+        if (module) {
+            printf("%s(%u) children %lu, cell %lu\n",
+                    module.getName().str().c_str(),
+                    module.getID(), _dfs[i], _cellNum[i]);
+        }
+    }
+
+    Assert(_cellMInstOffset.size() == _dfsOffset.size());
+    printf("%s", "-------------- MInst -----------------\n");
+    for (size_t i = 0; i < _cellMInstOffset.size(); ++i) {
+        const MInst<NS>& minst = MInst<NS>::Pool::get()[i];
+        if (minst) {
+            printf("%s(%u) module %s, dfs offset %lu, cell offset %lu\n",
+                    minst.getName().str().c_str(),
+                    minst.getID(),
+                    minst.getModule().getName().str().c_str(),
+                    _dfsOffset[i], _cellMInstOffset[i]);
+        }
+    }
+
+    printf("%s", "-------------- PInst -----------------\n");
+    for (size_t i = 0; i < _cellPInstOffset.size(); ++i) {
+        const PInst<NS>& pinst = PInst<NS>::Pool::get()[i];
+        if (pinst) {
+            printf("%s(%u) process %s, cell offset %lu\n",
+                    pinst.getName().str().c_str(),
+                    pinst.getID(),
+                    pinst.getProcessName().str().c_str(),
+                    _cellPInstOffset[i]);
+        }
+    }
+    /*printf("#0 %s(%s)\n", Vid(kVidSRoot).str().c_str(),
                           Vid(kVidSRoot).str().c_str());
     for (size_t i = 1; i < _index.size(); ++i) {
         Assert(i < MInst<NS>::Pool::get().getMaxSize());
@@ -573,7 +681,7 @@ void ElabDB<NS>::printFlatten(FILE* fp) const {
         const Module<NS>& module = minst.getModule();
         printf("#%lu %s(%s)\n", i, minst.getName().str().c_str(),
                                    module.getName().str().c_str());
-    }
+    }*/
 }
 
 template class ElabDB<NL_DEFAULT>;
