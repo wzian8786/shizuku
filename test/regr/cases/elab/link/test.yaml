@@ -1,0 +1,3 @@
+run: "shizuku --dump-post-elab-nl test.nl"
+check: "diff post-elab.nl test.exp"
+clean: "rm -rf post-elab.nl"
