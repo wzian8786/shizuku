@@ -13,6 +13,12 @@ struct NlPoolSpec {
     static constexpr uint32_t kPageIDBits = 16;
 };
 
+struct NlFPoolSpec {
+    static constexpr uint32_t kLocalBits = 8;
+    static constexpr uint32_t kBlockBits = 8;
+    static constexpr uint32_t kPageIDBits = 24;
+};
+
 template<uint32_t> class Port;
 template<uint32_t> class Net;
 template<uint32_t> class MInst;

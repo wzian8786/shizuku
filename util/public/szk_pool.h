@@ -9,11 +9,101 @@
 template <typename P>
 class JPoolTester;
 namespace util {
+enum GCPolicy {
+    kNoGC = 0,
+    kGC1,
+    kGC2
+};
 
 template<class Pool>
-class GCAlloc {
+class GC2Alloc {
+ public:
+    GC2Alloc() : _pool(Pool::get()), _cur(0),
+              _avail(0), _free2(0), _free3(0), _ts(_pool.getTs()) {}
+    void reset() {
+        _cur = 0;
+        _avail = 0;
+        _free2 = 0;
+        _free3 = 0;
+    }
+
+    uint64_t New(size_t num) {
+        // check if the Alloc is out of date
+        uint64_t ts = _pool.getTs();
+        if (ts != _ts) {
+            reset();
+            _ts = ts;
+        }
+        uint64_t ret = _cur;
+        // if free list is used and required number of elements is 1
+        // use free list first
+        if (num == 2) {
+            if (_free2) { 
+                typename Pool::Element& e = _pool[_free2];
+                uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
+                ret = _free2;
+                _free2 = *pn;
+                return ret;
+            } else if (_free3) {
+                typename Pool::Element& e = _pool[_free3];
+                uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
+                ret = _free3;
+                _free3 = *pn;
+                return ret;
+            }
+        } else if (num == 3 && _free3) {
+            typename Pool::Element& e = _pool[_free3];
+            uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
+            ret = _free3;
+            _free3 = *pn;
+            return ret;
+        }
+        if (num <= _avail) {
+            _cur += num;
+            _avail -= num;
+        } else {
+            size_t blocks = (num + Pool::kLocalSize - 1) >> Pool::kLocalBits;
+            Assert(blocks);
+            ret = _pool.newBlock(blocks);
+            if (ret == _cur + _avail) {
+                ret = _cur;
+            } else {
+                _avail = 0;
+            }
+            _cur = ret + num;
+            _avail = _avail + (blocks << Pool::kLocalBits) - num;
+        }
+        return ret;
+    }
+
+    void reclaim(uint64_t id, size_t size) {
+        typename Pool::Element& e = _pool[id];
+        Assert(!e);
+        uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
+        if (size == 2) {
+            *pn = _free2;
+            _free2 = id;
+        } else if (size == 3) {
+            *pn = _free3;
+            _free3 = id;
+        } else {
+            Assert(0);
+        }
+    }
+
+  private:
+    Pool&                   _pool;
+    uint64_t                _cur;
+    uint64_t                _avail;
+    uint64_t                _free2;
+    uint64_t                _free3;
+    uint64_t                _ts;
+};
+
+template<class Pool>
+class GC1Alloc {
  public: 
-    GCAlloc() : _pool(Pool::get()), _cur(0),
+    GC1Alloc() : _pool(Pool::get()), _cur(0),
               _avail(0), _free(0), _ts(_pool.getTs()) {}
     
     void reset() {
@@ -66,13 +156,13 @@ class GCAlloc {
         return ret;
     }
 
-    void reclaim(uint64_t id) {
+    void reclaim(uint64_t id, size_t size) {
+        Assert(size == 1);
         typename Pool::Element& e = _pool[id];
-        if (!e) {
-            uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
-            *pn = _free;
-            _free = id;
-        }
+        Assert(!e);
+        uint64_t* pn = (uint64_t*)((char*)&e + Pool::Element::kNextOffset);
+        *pn = _free;
+        _free = id;
     }
  
   private:
@@ -84,9 +174,9 @@ class GCAlloc {
 };
 
 template<class Pool>
-class PersistAlloc {
+class GC0Alloc {
  public:
-    PersistAlloc() : _pool(Pool::get()), _cur(0),
+    GC0Alloc() : _pool(Pool::get()), _cur(0),
               _avail(0), _free(0), _ts(_pool.getTs()) {}
  
     void reset() {
@@ -121,7 +211,7 @@ class PersistAlloc {
         return ret;
     }
  
-    void reclaim(uint64_t id) {}
+    void reclaim(uint64_t id, size_t size) {}
 
  private:
     Pool&                   _pool;
@@ -131,7 +221,7 @@ class PersistAlloc {
     uint64_t                _ts;
 };
 
-template<class T, uint32_t Namespace, class Spec, bool GC=false>
+template<class T, uint32_t Namespace, class Spec, GCPolicy GC=kNoGC>
 class Pool {
  public:
     constexpr static uint32_t kLocalBits  = Spec::kLocalBits;
@@ -148,8 +238,8 @@ class Pool {
 
     typedef T  Element;
     typedef T* PagePtr;
-    typedef typename std::conditional<GC, 
-            GCAlloc<Pool>, PersistAlloc<Pool>>::type Alloc;
+    typedef typename std::conditional<GC==kNoGC, GC0Alloc<Pool>,
+            typename std::conditional<GC==kGC1, GC1Alloc<Pool>, GC2Alloc<Pool>>::type>::type Alloc;
     friend ::JPoolTester<Pool>;
 
     Pool() : _pt(kMaxPageNum), _mapped(((uint64_t)-1) & (~kPageMask)),
@@ -187,8 +277,8 @@ class Pool {
         return tAlloc.New(num);
     }
 
-    void reclaim(uint64_t id) {
-        return tAlloc.reclaim(id);
+    void reclaim(uint64_t id, size_t size) {
+        return tAlloc.reclaim(id, size);
     }
 
     static Pool& get() { return gSingleton; }
@@ -240,10 +330,10 @@ class Pool {
     static thread_local Alloc   tAlloc;
 };
 
-template<class T, uint32_t Namespace, class Spec, bool GC>
+template<class T, uint32_t Namespace, class Spec, GCPolicy GC>
 Pool<T, Namespace, Spec, GC> __attribute__((init_priority(200))) Pool<T, Namespace, Spec, GC>::gSingleton;
-template<class T, uint32_t Namespace, class Spec, bool GC>
+template<class T, uint32_t Namespace, class Spec, GCPolicy GC>
 bool Pool<T, Namespace, Spec, GC>::gNoMore = false;
-template<class T, uint32_t Namespace, class Spec, bool GC>
+template<class T, uint32_t Namespace, class Spec, GCPolicy GC>
 thread_local typename Pool<T, Namespace, Spec, GC>::Alloc Pool<T, Namespace, Spec, GC>::tAlloc;
 }

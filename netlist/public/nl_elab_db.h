@@ -5,6 +5,9 @@
 #include "nl_def.h"
 namespace netlist {
 template<uint32_t NS>
+class ElabAnnotator;
+
+template<uint32_t NS>
 class ElabDB {
  public:
     ElabDB();
@@ -14,7 +17,7 @@ class ElabDB {
     uint64_t getCellOffset(const MInst<NS>& inst) const;
     uint64_t getCellOffset(const PInst<NS>& inst) const;
 
-    void printFlatten(FILE* fp) const;
+    void debugPrint() const;
 
  private:
     void resetWeights();
@@ -25,6 +28,8 @@ class ElabDB {
     // generate index to MInst ID from DFS;
     void genIndex();
     void visitInst(const MInst<NS>& inst, size_t dfs);
+
+    void createVertex(const ElabAnnotator<NS>& a);
 
  private:
     std::vector<size_t>             _dfs;

@@ -32,7 +32,9 @@ void PoolDB<NS>::reclaim() {
     size_t m = T::Pool::get().getMaxSize();
     if ((d * kTimesGC > m) || (d + kThresholdGC > m)) {
         T::foreach([](const T& e, size_t i) {
-            T::Pool::get().reclaim(i);
+            if (!e) {
+                T::Pool::get().reclaim(i, 1);
+            }
         });
     }
     T::gDeleted = 0;
@@ -164,19 +166,19 @@ template class PoolDB<NL_DEFAULT>;
 
 namespace util {
 template class Pool<netlist::Port<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::Net<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::Module<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::MInst<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::PInst<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::IPort<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::PPort<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 template class Pool<netlist::Process<netlist::NL_DEFAULT>,
-                    netlist::NL_DEFAULT, netlist::NlPoolSpec, true>;
+                    netlist::NL_DEFAULT, netlist::NlPoolSpec, kGC1>;
 }
