@@ -1,2 +1,3 @@
 elab/dangling/test.yaml
 elab/net-resolver/test.yaml
+elab/link/test.yaml

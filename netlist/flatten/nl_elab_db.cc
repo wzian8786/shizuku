@@ -73,6 +73,13 @@ class ElabAnnotator {
         std::vector<std::pair<
             uint64_t, uint64_t>>        readers;
     };
+    struct PairHash {
+        size_t operator()(const std::pair<Nexus*, uint32_t>& p) const {
+            return std::hash<size_t>()((size_t)p.first) ^
+                   std::hash<size_t>()((size_t)p.second);
+        }
+    };
+
     typedef std::shared_ptr<Nexus> NexusPtr;
     struct IPortNexus;
     struct NetNexus;
@@ -84,17 +91,18 @@ class ElabAnnotator {
         std::vector<const IPortNexus*>  ports;
     };
     struct IPortNexus {
-        IPortNexus(Nexus* nx, const IPort<NS>& p) :
-                   nexus(nx), port(p) {}
+        explicit IPortNexus(Nexus* nx) :
+                   nexus(nx) {}
         Nexus*                          nexus;
-        const IPort<NS>&                port;
-        std::vector<NetNexus*>    nets;
+        std::vector<const IPort<NS>*>   ports;
+        std::vector<NetNexus*>          nets;
     };
 
     typedef std::vector<std::shared_ptr<Nexus>> Annotation;
     typedef std::vector<std::vector<std::unique_ptr<NetNexus>>> NetNexusVec;
     typedef std::vector<std::vector<std::unique_ptr<IPortNexus>>> IPortNexusVec;
-    typedef std::unordered_map<Nexus*, IPortNexus*> IPortNexusIndex;
+    typedef std::unordered_map<std::pair<Nexus*, uint32_t>,
+                IPortNexus*, PairHash> IPortNexusIndex;
     
     void annotateNet(const Net<NS>& net, IPortNexusIndex& portNexusIndex) {
         util::Logger::debug("(elab) annotating net %s(%u)",
@@ -115,13 +123,15 @@ class ElabAnnotator {
                     netNexus = new NetNexus(nexus, net);
                     _netNexuses[moduleID].emplace_back(netNexus);
                 }
-                auto dit = portNexusIndex.find(pnexus.get());
+                std::pair<Nexus*, uint32_t> key { pnexus.get(), iport.getMInst().getID() };
+                auto dit = portNexusIndex.find(key);
                 if (dit == portNexusIndex.end()) {
-                    IPortNexus* portNexus = new IPortNexus(pnexus.get(), iport);
+                    IPortNexus* portNexus = new IPortNexus(pnexus.get());
                     _portNexuses[moduleID].emplace_back(portNexus);
-                    dit = portNexusIndex.emplace(pnexus.get(), portNexus).first;
+                    dit = portNexusIndex.emplace(key, portNexus).first;
                 }
                 IPortNexus* portNexus = dit->second;
+                portNexus->ports.emplace_back(&iport);
                 portNexus->nets.emplace_back(netNexus);
                 netNexus->ports.emplace_back(portNexus);
                 hasSibling = true;
@@ -174,36 +184,48 @@ class ElabAnnotator {
         const std::vector<std::unique_ptr<NetNexus>>& netNexuses =
                 _netNexuses[module.getID()];
         std::unordered_set<const NetNexus*> visited;
+        std::unordered_set<const IPortNexus*> pvisited;
         for (const auto& it : netNexuses) {
-            const NetNexus& netNexus = *it;
-            if (visited.find(&netNexus) != visited.end()) continue;
+            const NetNexus* netNexus = it.get();
+            if (visited.find(netNexus) != visited.end()) continue;
             NexusPtr link(new Nexus());
-            std::vector<const NetNexus*> todo = { &netNexus };
+            std::vector<const NetNexus*> todo = { netNexus };
             std::vector<const Net<NS>*> nets;
             std::vector<const Port<NS>*> mports;
             util::Logger::debug("(elab) annotating create link");
+            util::Logger::debug("(elab)   module: %s", module.getName().str().c_str());
             while (!todo.empty()) {
-                const NetNexus* nexus = todo.back();
+                netNexus = todo.back();
                 todo.pop_back();
-                Assert(visited.find(nexus) != visited.end());
-                visited.emplace(nexus);
+                Assert(visited.find(netNexus) == visited.end());
+                visited.emplace(netNexus);
     
-                const Net<NS>& net = netNexus.net;
+                const Net<NS>& net = netNexus->net;
                 nets.emplace_back(&net);
-                util::Logger::debug("(elab)    net: %s", net.getName().str().c_str());
-                mergeNexus(*link, *netNexus.nexus);
+                util::Logger::debug("(elab)     net: %s", net.getName().str().c_str());
+                mergeNexus(*link, *netNexus->nexus);
     
                 const typename Net<NS>::MPortVec& mportVec = net.getMPorts();
                 for (auto it = mportVec.begin(); it != mportVec.end(); ++it) {
                     mports.emplace_back(*it);
                 }
     
-                for (const auto& portNexus : netNexus.ports) {
-                    util::Logger::debug("(elab)    port: %s",
-                            portNexus->port.getPort().getName().str().c_str());
-                    mergeNexus(*link, *portNexus->nexus, portNexus->port);
+                for (auto portNexus : netNexus->ports) {
+                    if (pvisited.find(portNexus) != pvisited.end()) {
+                        continue;
+                    }
+                    pvisited.emplace(portNexus);
+                    Assert(!portNexus->ports.empty());
+                    for (auto iport : portNexus->ports) {
+                        util::Logger::debug("(elab)     inst %s, port: %s",
+                            iport->getMInst().getName().str().c_str(),
+                            iport->getPort().getName().str().c_str());
+                    }
+                    mergeNexus(*link, *portNexus->nexus, *portNexus->ports.back());
                     for (const auto& n : portNexus->nets) {
-                        todo.emplace_back(n);
+                        if (visited.find(n) == visited.end()) {
+                            todo.emplace_back(n);
+                        }
                     }
                 }
             }
@@ -268,8 +290,6 @@ class NetResolverCreator {
     NetResolverCreator() {}
 
     void createNetResolverForNet(Module<NS>& module, Net<NS>& net) {
-        util::Logger::debug("(elab) creating mult-drive for net %s(%u)",
-                    net.getName().str().c_str(), module.getID());
         const typename Net<NS>::IPortHolder& iports = net.getIPorts();
         const typename Net<NS>::MPortVec& mports = net.getMPorts();
         const typename Net<NS>::PPortHolder& pports = net.getPPorts();
@@ -360,7 +380,7 @@ class NetResolverCreator {
     void createNetResolver(const std::vector<Module<NS>*>& topo) {
         for (auto module : topo) {
             const typename Module<NS>::NetHolder& nets = module->getNets();
-            util::Logger::debug("(elab) creating mult-drive for module %s(%u)",
+            util::Logger::debug("(elab) creating mult-drive if any for module %s(%u)",
                     module->getName().str().c_str(), module->getID());
             for (auto it = nets.begin(); it != nets.end(); ++it) {
                 createNetResolverForNet(*module, **it);
