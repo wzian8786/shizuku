@@ -2,6 +2,7 @@
 #include <sstream>
 #include "nl_folded_obj.h"
 #include "nl_netlist.h"
+#include "nl_vertex.h"
 namespace netlist {
 template<uint32_t NS>
 typename FMInst<NS>::Pool FMInst<NS>::Pool::gSingleton;
@@ -49,6 +50,30 @@ size_t FMInst<NS>::Pool::getMaxSize() {
     return netlist.getTotalNumInst(netlist.getRoot().getID());
 }
 
+template<uint32_t NS>
+Vid FPInst<NS>::getName() const {
+    return Vertex<NS>::get(_addr).getName();
+}
+
+template<uint32_t NS>
+FMInst<NS> FPInst<NS>::getParent() const {
+    return FMInst<NS>(Vertex<NS>::get(_addr).getDFS());
+}
+
+template<uint32_t NS>
+std::string FPInst<NS>::getPath(unsigned char delimiter) const {
+    std::stringstream ss;
+    ss << getParent().getPath() << delimiter << getName().str();
+    return ss.str();
+}
+
+template<uint32_t NS>
+FPInst<NS>& FPInst<NS>::Builder::operator() (Cell<NS>& cell, size_t id) {
+    inst = (cell && cell.isHead()) ? FPInst(id) : FPInst();
+    return inst;
+}
+
 template class FMInst<NL_DEFAULT>;
+template class FPInst<NL_DEFAULT>;
 
 }

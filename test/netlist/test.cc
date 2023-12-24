@@ -19,6 +19,7 @@ using Net = netlist::Net<0>;
 using Module = netlist::Module<0>;
 using Netlist = netlist::Netlist<0>;
 using FMInst = netlist::FMInst<0>;
+using FPInst = netlist::FPInst<0>;
 using netlist::Vid;
 std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p1", Port::kPortInput },
@@ -31,6 +32,19 @@ std::vector<std::pair<Vid, Port::Direction>> eport = {
 };
 std::vector<Vid> enet = { "n1", "n2", "n3" };
 std::vector<Vid> emodule = { "S$Root", "m1", "m2", "m3", "m4"};
+std::vector<std::string> epath = {
+    "",
+    "m1",
+    "m1.i1",
+    "m1.i2",
+    "m1.i3",
+};
+
+std::unordered_set<std::string> epath1 = {
+    "m1.i4",
+    "m1.i5",
+    "m1.i6",
+};
 
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
     std::stringstream ss;
@@ -69,9 +83,18 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
 
     Netlist& netlist = Netlist::get();
     netlist.elab();
+
     FMInst::foreach([](FMInst& inst, uint64_t id){
-        printf("%s\n", inst.getPath().c_str());
-    });
+        if (id >= epath.size()) {
+            BOOST_CHECK(0);
+        } else {
+            BOOST_CHECK(inst.getPath() == epath[id]);
+        }
+    }, 1);
+
+    FPInst::foreach([](FPInst& inst, uint64_t id) {
+        BOOST_CHECK(epath1.find(inst.getPath()) != epath1.end());
+    }, 1);
 }
 
 BOOST_AUTO_TEST_CASE ( test_datatype ) {

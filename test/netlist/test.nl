@@ -18,6 +18,8 @@
     (%minst i2 m2)
     (%minst i3 m3)
     (%pinst i4 m4)
+    (%pinst i5 m4)
+    (%pinst i6 m4)
 )
 (%module m2
     (%port p4 %input)
