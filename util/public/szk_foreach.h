@@ -7,7 +7,7 @@ template<typename T>
 class TransBuilder {
  public:
     typedef T OT;
-    OT* operator() (T* p) const { return p; } 
+    OT& operator() (T& p) const { return p; } 
 };
 
 template<typename T>
@@ -40,16 +40,16 @@ class ForeachFunc {
                     _builder(another._builder),
                     _filter(another._filter) {}
 
-    void operator() (uint32_t id) const {
-        OT* o = _builder(&Pool::get()[id]);
-        if (!_filter(*o)) {
-            _func(*o, id);
+    void operator() (uint32_t id) {
+        OT& o = _builder(Pool::get()[id]);
+        if (!_filter(o)) {
+            _func(o, id);
         }
     }
 
  private:
     Func                            _func;
-    const Builder&                  _builder;
+    Builder                         _builder;
     const Filter&                   _filter;
 };
 
@@ -67,7 +67,7 @@ template<typename Pool,
          typename Filter=NoFilter<typename Pool::Element>>
 void foreach(std::function<void(typename Builder::OT&, uint64_t)> func,
              size_t threads=0) {
-    Dispatcher::Range range(0, Pool::get().getMaxSize());
+    Dispatcher::Range range(0, Pool::getMaxSize());
     ForeachFunc<Pool, Builder, Filter> ffunc(func);
     Dispatcher::parallel_for(ffunc, range, threads);
 }
@@ -96,10 +96,10 @@ class ReduceFunc {
         if (!_delegate) delete _func;
     }
 
-    void operator() (uint32_t id) const {
-        OT* o = _builder(&Pool::get()[id]);
-        if (!_filter(*o)) {
-            (*_func)(*o, id);
+    void operator() (uint32_t id) {
+        OT& o = _builder(Pool::get()[id]);
+        if (!_filter(o)) {
+            (*_func)(o, id);
         }
     }
 
@@ -109,7 +109,7 @@ class ReduceFunc {
 
  private:
     Func*                           _func;
-    const Builder&                  _builder;
+    Builder                         _builder;
     const Filter&                   _filter;
     bool                            _delegate;
 };
@@ -129,7 +129,7 @@ template<typename Pool,
          typename Builder=TransBuilder<typename Pool::Element>,
          typename Filter=NoFilter<typename Pool::Element>>
 void reduce(Func* func, size_t threads=0) {
-    Dispatcher::Range range(0, Pool::get().getMaxSize());
+    Dispatcher::Range range(0, Pool::getMaxSize());
     ReduceFunc<Pool, Func, Builder, Filter> ffunc(func);
     Dispatcher::parallel_reduce(ffunc, range, threads);
 }

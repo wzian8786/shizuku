@@ -19,6 +19,14 @@ class ElabDB {
 
     void debugPrint() const;
 
+    // _dfs;
+    uint64_t getTotalNumInst(uint32_t moduleID) const;
+
+    // _dfsOFfset;
+    uint64_t getDFSOffset(uint32_t instID) const;
+
+    // _index
+    uint32_t getMInstID(uint64_t dfs) const;
  private:
     void resetWeights();
 
@@ -27,16 +35,16 @@ class ElabDB {
 
     // generate index to MInst ID from DFS;
     void genIndex();
-    void visitInst(const MInst<NS>& inst, size_t dfs);
+    void visitInst(const MInst<NS>& inst, uint64_t dfs);
 
     void createVertex(const ElabAnnotator<NS>& a);
 
  private:
-    std::vector<size_t>             _dfs;
-    std::vector<size_t>             _dfsOffset;
-    std::vector<size_t>             _cellNum;
-    std::vector<size_t>             _cellMInstOffset;
-    std::vector<size_t>             _cellPInstOffset;
+    std::vector<uint64_t>           _dfs;
+    std::vector<uint64_t>           _dfsOffset;
+    std::vector<uint64_t>           _cellNum;
+    std::vector<uint64_t>           _cellMInstOffset;
+    std::vector<uint64_t>           _cellPInstOffset;
     std::vector<uint32_t>           _index;
 };
 }

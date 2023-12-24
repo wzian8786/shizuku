@@ -60,10 +60,10 @@ template<uint32_t NS>
 class ElabAnnotator {
  public:
     explicit ElabAnnotator(const ElabDB<NS>& db) :
-        _portAnno(Port<NS>::Pool::get().getMaxSize()),
-        _netAnno(Net<NS>::Pool::get().getMaxSize()),
-        _portNexuses(Module<NS>::Pool::get().getMaxSize()),
-        _netNexuses(Module<NS>::Pool::get().getMaxSize()),
+        _portAnno(Port<NS>::Pool::getMaxSize()),
+        _netAnno(Net<NS>::Pool::getMaxSize()),
+        _portNexuses(Module<NS>::Pool::getMaxSize()),
+        _netNexuses(Module<NS>::Pool::getMaxSize()),
         _db(db) {}
 
  public:
@@ -511,11 +511,11 @@ void ElabDB<NS>::resetWeights() {
     _cellNum.clear();
     _cellMInstOffset.clear();
     _cellPInstOffset.clear();
-    _dfs.resize(Module<NS>::Pool::get().getMaxSize());
-    _dfsOffset.resize(MInst<NS>::Pool::get().getMaxSize());
-    _cellNum.resize(Module<NS>::Pool::get().getMaxSize());
-    _cellMInstOffset.resize(MInst<NS>::Pool::get().getMaxSize());
-    _cellPInstOffset.resize(PInst<NS>::Pool::get().getMaxSize());
+    _dfs.resize(Module<NS>::Pool::getMaxSize());
+    _dfsOffset.resize(MInst<NS>::Pool::getMaxSize());
+    _cellNum.resize(Module<NS>::Pool::getMaxSize());
+    _cellMInstOffset.resize(MInst<NS>::Pool::getMaxSize());
+    _cellPInstOffset.resize(PInst<NS>::Pool::getMaxSize());
 }
 
 template<uint32_t NS>
@@ -586,8 +586,8 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
     for (auto mod : topo) {
         const typename Module<NS>::MInstHolder& insts = mod->getMInsts();
         const typename Module<NS>::PInstHolder& pinsts = mod->getPInsts();
-        size_t dfs = 1;
-        size_t cellNum = 0;
+        uint64_t dfs = 1;
+        uint64_t cellNum = 0;
         for (auto it = pinsts.begin(); it != pinsts.end(); ++it) {
             const PInst<NS>& pinst = **it;
             const Process<NS>& process = pinst.getProcess();
@@ -615,7 +615,7 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
 template<uint32_t NS>
 void ElabDB<NS>::genIndex() {
     const Module<NS>& root = Netlist<NS>::get().getRoot();
-    size_t maxDfs = _dfs[root.getID()];
+    uint64_t maxDfs = _dfs[root.getID()];
     _index.resize(maxDfs);
     const typename Module<NS>::MInstHolder& insts = root.getMInsts();
     for (auto it = insts.begin(); it != insts.end(); ++it) {
@@ -625,7 +625,7 @@ void ElabDB<NS>::genIndex() {
 }
 
 template<uint32_t NS>
-void ElabDB<NS>::visitInst(const MInst<NS>& inst, size_t dfs) {
+void ElabDB<NS>::visitInst(const MInst<NS>& inst, uint64_t dfs) {
     _index[dfs] = inst.getID();
     const Module<NS>& module = inst.getModule();
     const typename Module<NS>::MInstHolder& insts = module.getMInsts();
@@ -675,13 +675,31 @@ void ElabDB<NS>::debugPrint() const {
     /*printf("#0 %s(%s)\n", Vid(kVidSRoot).str().c_str(),
                           Vid(kVidSRoot).str().c_str());
     for (size_t i = 1; i < _index.size(); ++i) {
-        Assert(i < MInst<NS>::Pool::get().getMaxSize());
+        Assert(i < MInst<NS>::Pool::getMaxSize());
         const MInst<NS>& minst = MInst<NS>::Pool::get()[_index[i]];
         Assert(minst);
         const Module<NS>& module = minst.getModule();
         printf("#%lu %s(%s)\n", i, minst.getName().str().c_str(),
                                    module.getName().str().c_str());
     }*/
+}
+
+template<uint32_t NS>
+uint32_t ElabDB<NS>::getMInstID(uint64_t dfs) const {
+    Assert(dfs < _index.size());
+    return _index[dfs];
+}
+
+template<uint32_t NS>
+uint64_t ElabDB<NS>::getDFSOffset(uint32_t instID) const {
+    Assert(instID < _dfsOffset.size());
+    return _dfsOffset[instID];
+}
+
+template<uint32_t NS>
+uint64_t ElabDB<NS>::getTotalNumInst(uint32_t moduleID) const {
+    Assert(moduleID < _dfs.size());
+    return _dfs[moduleID];
 }
 
 template class ElabDB<NL_DEFAULT>;

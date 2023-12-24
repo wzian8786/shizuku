@@ -29,7 +29,7 @@ void PoolDB<NS>::reclaim() {
     constexpr size_t kTimesGC = 4;
     constexpr size_t kThresholdGC = 0x1000000;
     size_t d = T::gDeleted;
-    size_t m = T::Pool::get().getMaxSize();
+    size_t m = T::Pool::getMaxSize();
     if ((d * kTimesGC > m) || (d + kThresholdGC > m)) {
         T::foreach([](const T& e, size_t i) {
             if (!e) {
@@ -58,7 +58,7 @@ void PoolDB<NS>::print(FILE* fp, bool indent) const {
         if (module.isRoot()) return;
         module.print(fp, indent);
     }, 1);
-    std::vector<Vid> names(Process<NS>::Pool::get().getMaxSize());
+    std::vector<Vid> names(Process<NS>::Pool::getMaxSize());
     for (const auto& p : _processIndex) {
         names[p.second] = p.first;
     }
