@@ -539,8 +539,8 @@ void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
             uint64_t vaddr = addr + _cellPInstOffset[inst.getID()];
             size_t size = Cell<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
                                                process.getNumOfOutput() + process.getNumOfInout());
-            Vertex<NS>* vertex = Vertex<NS>::get(vaddr);
-            vertex->init(dfs, process.getID(), inst.getName(), size);
+            Vertex<NS>& vertex = Vertex<NS>::get(vaddr);
+            vertex.init(dfs, process.getID(), inst.getName(), size);
         }
 
         const typename Module<NS>::MInstHolder& minsts = module.getMInsts();
@@ -566,7 +566,7 @@ void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
             if (!nexus) continue;
             for (const auto& p : nexus->readers) {
                 uint64_t vaddr = addr + p.first;
-                Vertex<NS>& vertex = *Vertex<NS>::get(vaddr);
+                Vertex<NS>& vertex = Vertex<NS>::get(vaddr);
                 vertex.setDriver(nexus->driver, p.second);
             }
         }

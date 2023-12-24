@@ -26,8 +26,10 @@ void Vertex<NS>::setDriver(uint64_t driver, size_t iid) {
 }
 
 template<uint32_t NS>
-Vertex<NS>* Vertex<NS>::get(uint64_t addr) {
-    return (Vertex<NS>*)&Pool::get()[addr];
+Vertex<NS>& Vertex<NS>::get(uint64_t addr) {
+    Cell<NS>& cell = Pool::get()[addr];
+    Assert(cell && cell.isHead());
+    return *(Vertex<NS>*)(&cell);
 }
 
 template class Vertex<NL_DEFAULT>;

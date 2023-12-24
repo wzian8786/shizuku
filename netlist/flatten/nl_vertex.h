@@ -1,28 +1,12 @@
 #pragma once
 #include <cstdint>
-#include <cstring>
 #include "nl_def.h"
 #include "szk_pool.h"
 #include "szk_assert.h"
+#include "nl_flat_obj.h"
 #include "vid.h"
 namespace netlist {
 static constexpr uint64_t kReservedCell = 1;
-
-enum FlagIndex {
-    kIndexValid = 0,
-    kIndexHead,
-    kIndexForRent,
-};
-
-inline uint64_t encode40(uint8_t h, uint32_t l) {
-    return (((uint64_t)h) << 32) | l;
-}
-
-inline void decode40(uint64_t v, uint8_t& h, uint32_t& l) {
-    l = v;
-    h = (v >> 32);
-}
-
 class Head {
  public:
     Head(uint64_t dfs, uint64_t proc, Vid name) {
@@ -40,8 +24,8 @@ class Head {
     operator bool() const { return _flags & (1 << kIndexValid); }
     bool isHead() const { return _flags & (1 << kIndexHead); }
 
-    Vid getVid() const { return _name; }
-    void setVid(Vid name) { _name = name; }
+    Vid getName() const { return _name; }
+    void setName(Vid name) { _name = name; }
 
     uint64_t getDFS() const { return encode40(_dfsh, _dfs); }
     void setDFS(uint64_t dfs) {
@@ -68,46 +52,6 @@ class Head {
     Vid                 _name;
 };
 
-template<uint32_t NS>
-class Cell {
- public:
-    Cell() { init(); }
-
-    void init() {
-        memset(this, 0, sizeof(*this));
-        _flags = 1 << kIndexValid;
-    }
-
-    constexpr static size_t kNextOffset = 8;
-    constexpr static size_t kInputPerCell = 3;
-
-    operator bool() const { return _flags & (1 << kIndexValid); }
-    bool isHead() const { return _flags & (1 << kIndexHead); }
-
-    uint32_t getOffset() const { return _offset; }
-
-    uint64_t getInput(size_t index) const {
-        Assert(index < kInputPerCell);
-        return encode40(_inputh[index], _input[index]);
-    }
-
-    static size_t getNumCell(size_t in, size_t out) {
-        return 1 + std::max(out, (in+kInputPerCell-1)/kInputPerCell);
-    }
-
-    void setDriver(uint64_t driver, size_t index) {
-        decode40(driver, _inputh[index], _input[index]);
-    }
-
- private:
-    uint8_t             _flags;
-    uint8_t             _inputh[kInputPerCell];
-    uint32_t            _input[kInputPerCell];
-    uint32_t            _offset:24;
-    uint32_t            _origh:8;
-    uint32_t            _orig;
-};
-
 static_assert(sizeof(Cell<NL_DEFAULT>) == sizeof(Head), "unexpected Cell size");
 
 template<uint32_t NS>
@@ -123,10 +67,14 @@ class Vertex {
     typedef util::Pool<Cell<NS>, NS, NlFPoolSpec, util::kGC2> Pool;
     static void* operator new(size_t count, const Process<NS>& p, size_t& size);
     static void operator delete(void* p) {}
-    static Vertex* get(uint64_t addr);
+    static Vertex& get(uint64_t addr);
 
     void init(uint64_t dfs, uint64_t proc, Vid name, size_t size);
     void setDriver(uint64_t driver, size_t iid);
+
+    Vid getName() const { return _head.getName(); }
+    uint64_t getDFS() const { return _head.getDFS(); }
+    uint64_t getProcessID() const { return _head.getProcess(); }
 
  private:
     Head                _head;

@@ -7,7 +7,7 @@ template<typename T>
 class TransBuilder {
  public:
     typedef T OT;
-    OT& operator() (T& p) const { return p; } 
+    OT& operator() (T& p, uint64_t id) const { return p; } 
 };
 
 template<typename T>
@@ -40,8 +40,8 @@ class ForeachFunc {
                     _builder(another._builder),
                     _filter(another._filter) {}
 
-    void operator() (uint32_t id) {
-        OT& o = _builder(Pool::get()[id]);
+    void operator() (uint64_t id) {
+        OT& o = _builder(Pool::get()[id], id);
         if (!_filter(o)) {
             _func(o, id);
         }
@@ -96,8 +96,8 @@ class ReduceFunc {
         if (!_delegate) delete _func;
     }
 
-    void operator() (uint32_t id) {
-        OT& o = _builder(Pool::get()[id]);
+    void operator() (uint64_t id) {
+        OT& o = _builder(Pool::get()[id], id);
         if (!_filter(o)) {
             (*_func)(o, id);
         }

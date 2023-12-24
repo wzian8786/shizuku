@@ -28,6 +28,9 @@ template<uint32_t> class PPort;
 template<uint32_t> class Module;
 template<uint32_t> class Process;
 
+template<uint32_t> class Cell;
+template<uint32_t> class Vertex;
+
 class DataType;
 class DataTypeDB;
 class PreVidDB;
