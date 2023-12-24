@@ -7,6 +7,7 @@
 #include "nl_datatype_db.h"
 #include "nl_netlist.h"
 #include "nl_folded_obj.h"
+#include "nl_flat_obj.h"
 #include "szk_foreach.h"
 using netlist::Scalar;
 using netlist::Real;
@@ -16,6 +17,8 @@ using netlist::DataTypeDB;
 using Port = netlist::Port<0>;
 using Net = netlist::Net<0>;
 using Module = netlist::Module<0>;
+using Netlist = netlist::Netlist<0>;
+using FMInst = netlist::FMInst<0>;
 using netlist::Vid;
 std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p1", Port::kPortInput },
@@ -63,6 +66,12 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
             BOOST_CHECK(module.getName() == emodule[i]);
         }
     }, 1);
+
+    Netlist& netlist = Netlist::get();
+    netlist.elab();
+    FMInst::foreach([](FMInst& inst, uint64_t id){
+        printf("%s\n", inst.getPath().c_str());
+    });
 }
 
 BOOST_AUTO_TEST_CASE ( test_datatype ) {

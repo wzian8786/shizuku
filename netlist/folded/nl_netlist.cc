@@ -4,7 +4,7 @@
 namespace netlist {
 template<uint32_t NS>
 void Netlist<NS>::topDown(std::vector<Module<NS>*>& modules) {
-    std::vector<uint32_t> visited(Module<NS>::Pool::get().getMaxSize());
+    std::vector<uint32_t> visited(Module<NS>::Pool::getMaxSize());
     Module<NS>* root = &this->getRoot();
     modules.emplace_back(root);
     size_t i = 0;

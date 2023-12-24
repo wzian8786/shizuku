@@ -27,7 +27,7 @@ void sanityCheck() {
 }
 
 void buildTops() {
-    std::vector<uint8_t> notTop(Module<NL_DEFAULT>::Pool::get().getMaxSize());
+    std::vector<uint8_t> notTop(Module<NL_DEFAULT>::Pool::getMaxSize());
     MInst<NL_DEFAULT>::foreach([&notTop](const MInst<NL_DEFAULT>& minst, size_t i) {
         notTop[minst.getModule().getID()] = 1;
     }, 0);

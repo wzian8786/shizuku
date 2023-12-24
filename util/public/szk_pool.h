@@ -282,7 +282,7 @@ class Pool {
     }
 
     static Pool& get() { return gSingleton; }
-    uint64_t getMaxSize() { return _addr.load(std::memory_order_relaxed); }
+    static uint64_t getMaxSize() { return gSingleton._addr.load(std::memory_order_relaxed); }
 
     uint64_t getTs() const { return _ts.load(); }
 
