@@ -20,15 +20,17 @@ using Module = netlist::Module<0>;
 using Netlist = netlist::Netlist<0>;
 using FMInst = netlist::FMInst<0>;
 using FPInst = netlist::FPInst<0>;
+using FDPort = netlist::FDPort<0>;
+using FRPort = netlist::FRPort<0>;
 using netlist::Vid;
 std::vector<std::pair<Vid, Port::Direction>> eport = {
     { "p1", Port::kPortInput },
     { "p2", Port::kPortOutput },
     { "p3", Port::kPortInout },
     { "p4", Port::kPortInput },
-    { "p5", Port::kPortOutput },
     { "p5", Port::kPortInput },
-    { "p6", Port::kPortInput },
+    { "w", Port::kPortInput },
+    { "w", Port::kPortOutput },
 };
 std::vector<Vid> enet = { "n1", "n2", "n3" };
 std::vector<Vid> emodule = { "S$Root", "m1", "m2", "m3", "m4"};
@@ -40,10 +42,16 @@ std::vector<std::string> epath = {
     "m1.i3",
 };
 
-std::unordered_set<std::string> epath1 = {
+std::vector<std::string> epath1 = {
     "m1.i4",
     "m1.i5",
     "m1.i6",
+};
+
+std::vector<std::string> epath2 = {
+    "m1.i4.i0",
+    "m1.i5.i0",
+    "m1.i6.i0",
 };
 
 BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
@@ -92,8 +100,17 @@ BOOST_AUTO_TEST_CASE ( test_netlist_reader ) {
         }
     }, 1);
 
-    FPInst::foreach([](FPInst& inst, uint64_t id) {
-        BOOST_CHECK(epath1.find(inst.getPath()) != epath1.end());
+    size_t index = 0;
+    FPInst::foreach([&index](FPInst& inst, uint64_t id) {
+        BOOST_CHECK(epath1[index++] == inst.getPath());
+    }, 1);
+
+    index = 0;
+    FRPort::foreach([&index](FRPort port, uint64_t id) {
+        BOOST_CHECK(epath2[index++] == port.getPath());
+        if (port.getDriver()) {
+            BOOST_CHECK(port.getDriver().getPath() == "m1.i4.o0");
+        }
     }, 1);
 }
 

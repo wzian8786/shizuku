@@ -159,11 +159,11 @@ class ElabAnnotator {
                 break;
             case Port<NS>::kPortOutput:
                 Assert(!nexus->driver);
-                nexus->driver = offset + dirIndex;
+                nexus->driver = offset + 1 + dirIndex;
                 break;
             case Port<NS>::kPortInout:
                 Assert(!nexus->driver);
-                nexus->driver = offset + process.getNumOfOutput() + dirIndex;
+                nexus->driver = offset + 1 + process.getNumOfOutput() + dirIndex;
                 nexus->readers.emplace_back(offset, dirIndex);
                 break;
             default:
@@ -539,7 +539,7 @@ void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
             uint64_t vaddr = addr + _cellPInstOffset[inst.getID()];
             size_t size = Vertex<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
                                             process.getNumOfOutput() + process.getNumOfInout());
-            Vertex<NS>& vertex = Vertex<NS>::get(vaddr);
+            Vertex<NS>& vertex = *(Vertex<NS>*)&Vertex<NS>::Pool::get()[vaddr];
             vertex.init(dfs, process.getID(), inst.getName(), size);
         }
 
@@ -563,11 +563,15 @@ void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
             const Net<NS>& net = *p;
             Assert(net.getID() <= anno.size());
             const typename ElabAnnotator<NS>::Nexus* nexus = anno[net.getID()].get();
-            if (!nexus) continue;
+            if (!nexus || !nexus->driver) continue;
+            util::Logger::debug("(elab) net %s(%u) driver %lu",
+                            net.getName().str().c_str(), net.getID(),
+                            addr+nexus->driver);
             for (const auto& p : nexus->readers) {
                 uint64_t vaddr = addr + p.first;
                 Vertex<NS>& vertex = Vertex<NS>::get(vaddr);
-                vertex.setDriver(nexus->driver, p.second);
+                vertex.setDriver(addr+nexus->driver, p.second);
+                util::Logger::debug("(elab)   reader addr %lu, port %lu", vaddr + p.second);
             }
         }
 
