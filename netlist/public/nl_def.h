@@ -29,7 +29,10 @@ template<uint32_t> class Module;
 template<uint32_t> class Process;
 
 template<uint32_t> class Cell;
-template<uint32_t> class Vertex;
+template<uint32_t> class FMInst;
+template<uint32_t> class FPInst;
+template<uint32_t> class FDPort;
+template<uint32_t> class FRPort;
 
 class DataType;
 class DataTypeDB;

@@ -24,11 +24,12 @@ inline void decode40(uint64_t v, uint8_t& h, uint32_t& l) {
 
 class Links {
  public:
-    Links() { init(); }
+    Links() {}
 
-    void init() {
+    void init(size_t offset) {
         memset(this, 0, sizeof(*this));
         _flags = 1 << kIndexValid;
+        _offset = offset;
     }
 
     constexpr static size_t kInputPerLinks = 3;
@@ -38,7 +39,7 @@ class Links {
 
     uint32_t getOffset() const { return _offset; }
 
-    uint64_t getInput(size_t index) const {
+    uint64_t getDriver(size_t index) const {
         Assert(index < kInputPerLinks);
         return encode40(_inputh[index], _input[index]);
     }
@@ -58,9 +59,7 @@ class Links {
 
 class Head {
  public:
-    Head(uint64_t dfs, uint64_t proc, Vid name) {
-        init(dfs, proc, name);
-    }
+    Head() {}
 
     void init(uint64_t dfs, uint64_t proc, Vid name) {
         _flags = (1 << kIndexValid) | (1 << kIndexHead);
@@ -107,11 +106,8 @@ static_assert(sizeof(Cell<NL_DEFAULT>) == sizeof(Links), "unexpected Cell size")
 template<uint32_t NS>
 class Vertex {
  public:
-    Vertex(uint64_t dfs, uint64_t proc, Vid name, size_t size) :
-        _head(dfs, proc, name) {
-        for (size_t i = 2; i < size; ++i) {
-            _cell[i-1].init();
-        }
+    Vertex(uint64_t dfs, uint64_t proc, Vid name, size_t size) {
+        init(dfs, proc, name, size);
     }
 
     operator bool() const { return _head && _head.isHead(); }
@@ -120,9 +116,11 @@ class Vertex {
     static void* operator new(size_t count, const Process<NS>& p, size_t& size);
     static void operator delete(void* p) {}
     static Vertex& get(uint64_t addr);
+    static uint64_t getOffset(uint64_t addr);
 
     void init(uint64_t dfs, uint64_t proc, Vid name, size_t size);
     void setDriver(uint64_t driver, size_t iid);
+    uint64_t getDriver(size_t iid) const;
 
     Vid getName() const { return _head.getName(); }
     uint64_t getDFS() const { return _head.getDFS(); }

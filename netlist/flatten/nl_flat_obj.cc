@@ -68,13 +68,130 @@ std::string FPInst<NS>::getPath(unsigned char delimiter) const {
 }
 
 template<uint32_t NS>
-FPInst<NS>& FPInst<NS>::Builder::operator() (Cell<NS>& cell, size_t id) {
+FPInst<NS>* FPInst<NS>::Builder::operator() (Cell<NS>& cell, size_t id, size_t& size) {
+    size = 1;
     Vertex<NS>& vertex = *(Vertex<NS>*)&cell;
     inst = vertex ? FPInst(id) : FPInst();
-    return inst;
+    return &inst;
+}
+
+template<uint32_t NS>
+Vid FDPort<NS>::getName() const {
+    uint64_t offset = Vertex<NS>::getOffset(_addr);
+    const Vertex<NS>& vertex = Vertex<NS>::get(_addr-offset);
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    Assert(process);
+    std::stringstream ss;
+    size_t numOutput = process.getNumOfOutput();
+    if (offset > numOutput) {
+        ss << "io" << (offset-numOutput);
+    } else {
+        ss << "o" << (offset-1);
+    }
+    return Vid(ss.str());
+}
+
+template<uint32_t NS>
+std::string FDPort<NS>::getPath(unsigned char delimiter) const {
+    std::stringstream ss;
+    ss << getParent().getPath() << delimiter << getName().str();
+    return ss.str();
+}
+
+template<uint32_t NS>
+FPInst<NS> FDPort<NS>::getParent() const {
+    return FPInst<NS>(_addr - Vertex<NS>::getOffset(_addr));
+}
+
+template<uint32_t NS>
+bool FDPort<NS>::isIO() const {
+    const Vertex<NS>& vertex = Vertex<NS>::get(_addr);
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    Assert(process);
+    return Vertex<NS>::getOffset(_addr) > process.getNumOfOutput();
+}
+
+template<uint32_t NS>
+FDPort<NS>* FDPort<NS>::Builder::operator() (Cell<NS>& cell, size_t id, size_t& size) {
+    Vertex<NS>& vertex = *(Vertex<NS>*)&cell;
+    if (!vertex) {
+        size = 0;
+        return nullptr;
+    } 
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    size = process.getNumOfOutput() + process.getNumOfInout();
+    if (size) {
+        ports.resize(size);
+        for (size_t i = 0; i < size; ++i) {
+            ports[i] = FDPort(id+1+i);
+        }
+        return &ports[0];
+    }
+    return nullptr;
+}
+
+template<uint32_t NS>
+Vid FRPort<NS>::getName() const {
+    const Vertex<NS>& vertex = Vertex<NS>::get(_addr);
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    Assert(process);
+    std::stringstream ss;
+    size_t numInput = process.getNumOfInput();
+    if (_port >= numInput) {
+        ss << "io" << (_port-numInput);
+    } else {
+        ss << "i" << _port;
+    }
+    return Vid(ss.str());
+}
+
+template<uint32_t NS>
+std::string FRPort<NS>::getPath(unsigned char delimiter) const {
+    std::stringstream ss;
+    ss << getParent().getPath() << delimiter << getName().str();
+    return ss.str();
+}
+
+template<uint32_t NS>
+FPInst<NS> FRPort<NS>::getParent() const {
+    return FPInst<NS>(_addr);
+}
+
+template<uint32_t NS>
+bool FRPort<NS>::isIO() const {
+    const Vertex<NS>& vertex = Vertex<NS>::get(_addr);
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    Assert(process);
+    return _port >= process.getNumOfInput();
+}
+
+template<uint32_t NS>
+FDPort<NS> FRPort<NS>::getDriver() const {
+    return FDPort<NS>(Vertex<NS>::get(_addr).getDriver(_port));
+}
+
+template<uint32_t NS>
+FRPort<NS>* FRPort<NS>::Builder::operator() (Cell<NS>& cell, size_t id, size_t& size) {
+    Vertex<NS>& vertex = *(Vertex<NS>*)&cell;
+    if (!vertex) {
+        size = 0;
+        return nullptr;
+    } 
+    const Process<NS>& process = Process<NS>::Pool::get()[vertex.getProcessID()];
+    size = process.getNumOfInput() + process.getNumOfInout();
+    if (size) {
+        ports.resize(size);
+        for (size_t i = 0; i < size; ++i) {
+            ports[i] = FRPort(id, i);
+        }
+        return &ports[0];
+    }
+    return nullptr;
 }
 
 template class FMInst<NL_DEFAULT>;
 template class FPInst<NL_DEFAULT>;
+template class FDPort<NL_DEFAULT>;
+template class FRPort<NL_DEFAULT>;
 
 }

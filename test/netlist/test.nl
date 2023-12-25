@@ -25,9 +25,9 @@
     (%port p4 %input)
 )
 (%module m3
-    (%port p5 %output)
+    (%port p5 %input)
 )
 (%process m4 %seq
     (%port %input)
-    (%port %input)
+    (%port %output)
 )

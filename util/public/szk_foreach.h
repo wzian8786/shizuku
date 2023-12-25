@@ -7,7 +7,10 @@ template<typename T>
 class TransBuilder {
  public:
     typedef T OT;
-    OT& operator() (T& p, uint64_t id) const { return p; } 
+    OT* operator() (T& p, uint64_t id, size_t& size) const {
+        size = 1;
+        return &p;
+    } 
 };
 
 template<typename T>
@@ -41,9 +44,12 @@ class ForeachFunc {
                     _filter(another._filter) {}
 
     void operator() (uint64_t id) {
-        OT& o = _builder(Pool::get()[id], id);
-        if (!_filter(o)) {
-            _func(o, id);
+        size_t size;
+        OT* o = _builder(Pool::get()[id], id, size);
+        for (size_t i = 0; i < size; ++i) {
+            if (!_filter(*o)) {
+                _func(o[i], id);
+            }
         }
     }
 
@@ -97,9 +103,12 @@ class ReduceFunc {
     }
 
     void operator() (uint64_t id) {
-        OT& o = _builder(Pool::get()[id], id);
-        if (!_filter(o)) {
-            (*_func)(o, id);
+        size_t size;
+        OT* o = _builder(Pool::get()[id], id, size);
+        for (size_t i = 0; i < size; ++i) {
+            if (!_filter(*o)) {
+                (*_func)(o[i], id);
+            }
         }
     }
 
