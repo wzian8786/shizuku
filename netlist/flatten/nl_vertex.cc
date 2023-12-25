@@ -14,7 +14,7 @@ void Vertex<NS>::init(uint64_t dfs, uint64_t proc, Vid name, size_t size) {
     Assert(size > 1);
     _head.init(dfs, proc, name);
     for (size_t i = 1; i < size; ++i) {
-        _cell[i-1].init(i);
+        _links[i-1].init(i);
     }
 }
 
@@ -22,14 +22,14 @@ template<uint32_t NS>
 void Vertex<NS>::setDriver(uint64_t driver, size_t iid) {
     size_t offset = iid / Links::kInputPerLinks;
     size_t index = iid % Links::kInputPerLinks;
-    _cell[offset].setDriver(driver, index);
+    _links[offset].setDriver(driver, index);
 }
 
 template<uint32_t NS>
 uint64_t Vertex<NS>::getDriver(size_t iid) const {
     size_t offset = iid / Links::kInputPerLinks;
     size_t index = iid % Links::kInputPerLinks;
-    return _cell[offset].getDriver(index);
+    return _links[offset].getDriver(index);
 }
 
 template<uint32_t NS>

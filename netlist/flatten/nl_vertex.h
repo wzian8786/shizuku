@@ -133,7 +133,7 @@ class Vertex {
 
  private:
     Head                _head;
-    Links               _cell[1];
+    Links               _links[1];
 };
 
 static_assert(sizeof(Vertex<NL_DEFAULT>) == 2 * sizeof(Cell<NL_DEFAULT>), "unexpected Vertex size");
