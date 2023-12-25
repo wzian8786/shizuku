@@ -69,7 +69,8 @@ std::string FPInst<NS>::getPath(unsigned char delimiter) const {
 
 template<uint32_t NS>
 FPInst<NS>& FPInst<NS>::Builder::operator() (Cell<NS>& cell, size_t id) {
-    inst = (cell && cell.isHead()) ? FPInst(id) : FPInst();
+    Vertex<NS>& vertex = *(Vertex<NS>*)&cell;
+    inst = vertex ? FPInst(id) : FPInst();
     return inst;
 }
 

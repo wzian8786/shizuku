@@ -537,8 +537,8 @@ void ElabDB<NS>::createVertex(const ElabAnnotator<NS>& a) {
             const PInst<NS>& inst = *p;
             const Process<NS>& process = inst.getProcess();
             uint64_t vaddr = addr + _cellPInstOffset[inst.getID()];
-            size_t size = Cell<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
-                                               process.getNumOfOutput() + process.getNumOfInout());
+            size_t size = Vertex<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
+                                            process.getNumOfOutput() + process.getNumOfInout());
             Vertex<NS>& vertex = Vertex<NS>::get(vaddr);
             vertex.init(dfs, process.getID(), inst.getName(), size);
         }
@@ -592,8 +592,8 @@ void ElabDB<NS>::genWeights(const std::vector<Module<NS>*>& topo) {
             const PInst<NS>& pinst = **it;
             const Process<NS>& process = pinst.getProcess();
             _cellPInstOffset[pinst.getID()] = cellNum;
-            cellNum += Cell<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
-                                        process.getNumOfOutput() + process.getNumOfInout());
+            cellNum += Vertex<NS>::getNumCell(process.getNumOfInput() + process.getNumOfInout(),
+                                         process.getNumOfOutput() + process.getNumOfInout());
         };
 
         for (auto it = insts.begin(); it != insts.end(); ++it) {

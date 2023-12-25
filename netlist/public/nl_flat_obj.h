@@ -6,60 +6,23 @@
 #include "szk_foreach.h"
 #include "szk_pool.h"
 namespace netlist {
-enum FlagIndex {
-    kIndexValid = 0,
-    kIndexHead,
-    kIndexForRent,
-};
-
-inline uint64_t encode40(uint8_t h, uint32_t l) {
-    return (((uint64_t)h) << 32) | l;
-}
-
-inline void decode40(uint64_t v, uint8_t& h, uint32_t& l) {
-    l = v;
-    h = (v >> 32);
-}
-
 template<uint32_t NS>
 class Cell {
  public:
-    Cell() { init(); }
-
-    void init() {
-        memset(this, 0, sizeof(*this));
-        _flags = 1 << kIndexValid;
-    }
-
     constexpr static size_t kNextOffset = 8;
-    constexpr static size_t kInputPerCell = 3;
-
-    operator bool() const { return _flags & (1 << kIndexValid); }
-    bool isHead() const { return _flags & (1 << kIndexHead); }
-
-    uint32_t getOffset() const { return _offset; }
-
-    uint64_t getInput(size_t index) const {
-        Assert(index < kInputPerCell);
-        return encode40(_inputh[index], _input[index]);
-    }
-
-    static size_t getNumCell(size_t in, size_t out) {
-        return 1 + std::max(out, (in+kInputPerCell-1)/kInputPerCell);
-    }
-
-    void setDriver(uint64_t driver, size_t index) {
-        decode40(driver, _inputh[index], _input[index]);
-    }
+    operator bool() const { return _a1 & 0x1; }
 
  private:
-    uint8_t             _flags;
-    uint8_t             _inputh[kInputPerCell];
-    uint32_t            _input[kInputPerCell];
-    uint32_t            _offset:24;
-    uint32_t            _origh:8;
-    uint32_t            _orig;
-};
+    uint8_t         _a1;
+    uint8_t         _a2;
+    uint8_t         _a3;
+    uint8_t         _a4;
+    uint32_t        _a8;
+    uint32_t        _a12;
+    uint32_t        _a16;
+    uint32_t        _a20;
+    uint32_t        _a24;
+}; 
 
 template<uint32_t NS>
 class FMInst {
