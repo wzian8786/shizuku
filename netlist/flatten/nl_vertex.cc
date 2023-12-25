@@ -3,8 +3,8 @@
 namespace netlist {
 template<uint32_t NS>
 void* Vertex<NS>::operator new(size_t count, const Process<NS>& p, size_t& size) {
-    size = Cell<NS>::getNumCell(p.getNumOfInput() + p.getNumOfInout(),
-                                p.getNumOfOutput() + p.getNumOfInout());
+    size = getNumCell(p.getNumOfInput() + p.getNumOfInout(),
+                      p.getNumOfOutput() + p.getNumOfInout());
     uint64_t id = Vertex<NS>::Pool::get().New(size);
     return &Vertex<NS>::Pool::get()[id];
 }
@@ -20,16 +20,16 @@ void Vertex<NS>::init(uint64_t dfs, uint64_t proc, Vid name, size_t size) {
 
 template<uint32_t NS>
 void Vertex<NS>::setDriver(uint64_t driver, size_t iid) {
-    size_t offset = iid / Cell<NS>::kInputPerCell;
-    size_t index = iid % Cell<NS>::kInputPerCell;
+    size_t offset = iid / Links::kInputPerLinks;
+    size_t index = iid % Links::kInputPerLinks;
     _cell[offset].setDriver(driver, index);
 }
 
 template<uint32_t NS>
 Vertex<NS>& Vertex<NS>::get(uint64_t addr) {
-    Cell<NS>& cell = Pool::get()[addr];
-    Assert(cell && cell.isHead());
-    return *(Vertex<NS>*)(&cell);
+    Vertex<NS>& vertex = *(Vertex*)&Pool::get()[addr];
+    Assert(vertex);
+    return vertex;
 }
 
 template class Vertex<NL_DEFAULT>;
