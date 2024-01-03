@@ -1,7 +1,7 @@
 #include "szk_option.h"
 #include "szk_log.h"
 #include "ir_reader.h"
-#include "ir_db_impl.h"
+#include "ir_db.h"
 static void printBanner() {
     printf("\n");
     printf("                      Welcome\n\n");
@@ -44,19 +44,16 @@ int main(int argc, const char* argv[]) {
     printBanner();
     parseOption(argc, argv);
     parseIR();
-    ir::IRDBImpl<ir::IR_DEFAULT>& nl =
-            ir::IRDBImpl<ir::IR_DEFAULT>::get();
     if (util::OptionDB::getOption(kOptDumpPreElabNL).enabled()) {
         FILE* fp = fopen("pre-elab.nl", "w");
-        nl.print(fp, true);
+        ir::IRDB<ir::IR_DEFAULT>::printFolded(fp, true);
         fclose(fp);
     }
-    nl.elab();
+    ir::IRDB<ir::IR_DEFAULT>::elab();
     if (util::OptionDB::getOption(kOptDumpPostElabNL).enabled()) {
         FILE* fp = fopen("post-elab.nl", "w");
-        nl.print(fp, true);
+        ir::IRDB<ir::IR_DEFAULT>::printFolded(fp, true);
         fclose(fp);
     }
-    nl.debugPrint();
     return 0;
 }

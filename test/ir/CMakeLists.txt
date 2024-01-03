@@ -1,6 +1,7 @@
 include_directories(${shizuku_SOURCE_DIR}/util/public)
 include_directories(${shizuku_SOURCE_DIR}/vid/public)
 include_directories(${shizuku_SOURCE_DIR}/ir/public)
+include_directories(${shizuku_SOURCE_DIR}/ir/private)
 
 add_definitions(-DTEST_SOURCE="${CMAKE_CURRENT_SOURCE_DIR}")
 

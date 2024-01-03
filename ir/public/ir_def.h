@@ -37,4 +37,6 @@ template<uint32_t> class FRPort;
 class DataType;
 class DataTypeDB;
 class PreVidDB;
+template<uint32_t> class IRDB;
+template<uint32_t> class IRDBImpl;
 }

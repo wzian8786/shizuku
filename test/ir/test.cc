@@ -5,7 +5,7 @@
 #include "ir_reader.h"
 #include "ir_datatype.h"
 #include "ir_datatype_db.h"
-#include "ir_db_impl.h"
+#include "ir_db.h"
 #include "ir_folded_obj.h"
 #include "ir_flat_obj.h"
 #include "szk_foreach.h"
@@ -17,7 +17,7 @@ using ir::DataTypeDB;
 using Port = ir::Port<0>;
 using Net = ir::Net<0>;
 using Module = ir::Module<0>;
-using IRDB   = ir::IRDBImpl<0>;
+using IRDB   = ir::IRDB<0>;
 using FMInst = ir::FMInst<0>;
 using FPInst = ir::FPInst<0>;
 using FDPort = ir::FDPort<0>;
@@ -89,8 +89,7 @@ BOOST_AUTO_TEST_CASE ( test_ir_reader ) {
         }
     }, 1);
 
-    IRDB& db = IRDB::get();
-    db.elab();
+    IRDB::elab();
 
     FMInst::foreach([](FMInst& inst, uint64_t id){
         if (id >= epath.size()) {
