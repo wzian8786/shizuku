@@ -53,7 +53,7 @@ void PoolDB<NS>::gc() {
 }
 
 template<uint32_t NS>
-void PoolDB<NS>::print(FILE* fp, bool indent) const {
+void PoolDB<NS>::printFolded(FILE* fp, bool indent) const {
     Module<NS>::foreach([fp, indent](const Module<NS>& module, size_t) {
         if (module.isRoot()) return;
         module.print(fp, indent);

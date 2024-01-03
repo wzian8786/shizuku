@@ -8,7 +8,7 @@ void IRDB<NS>::elab() {
 
 template<uint32_t NS>
 void IRDB<NS>::printFolded(FILE* fp, bool indent) {
-    IRDBImpl<NS>::get().print(fp, indent);
+    IRDBImpl<NS>::get().printFolded(fp, indent);
 }
 
 template class IRDB<IR_DEFAULT>;

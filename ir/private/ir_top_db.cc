@@ -9,9 +9,5 @@ TopDB<NS>::TopDB() {
     _root->setRoot();
 }
 
-template<uint32_t NS>
-void TopDB<NS>::addTop(Module<NS>* top) {
-}
-
 template class TopDB<IR_DEFAULT>;
 }

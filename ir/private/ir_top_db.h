@@ -12,7 +12,6 @@ class TopDB {
     Module<NS>& getRoot() { return *_root; }
     const Module<NS>& getRoot() const { return *_root; }
 
-    void addTop(Module<NS>* top);
     void getTops(TopVec& tops) const;
 
  private:

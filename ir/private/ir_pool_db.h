@@ -24,7 +24,7 @@ class PoolDB {
 
     void clear();
     void gc();
-    void print(FILE* fp, bool indent) const;
+    void printFolded(FILE* fp, bool indent) const;
 
  private:
     template<typename T>
