@@ -1,7 +1,7 @@
 #include "szk_option.h"
 #include "szk_log.h"
-#include "nl_reader.h"
-#include "nl_netlist.h"
+#include "ir_reader.h"
+#include "ir_db_impl.h"
 static void printBanner() {
     printf("\n");
     printf("                      Welcome\n\n");
@@ -27,25 +27,25 @@ static void parseOption(int argc, const char* argv[]) {
     db.parse(argc, argv);
 }
 
-static void parseNetlist() {
+static void parseIR() {
     const util::OptionDB::ArgVec& args = util::OptionDB::get().getArgs();
     for (const std::string& arg : args) {
         FILE* fp = fopen(arg.c_str(),  "r");
         if (!fp) {
             util::Logger::fatal("Failed to open file '%s'", arg.c_str());
         }
-        netlist::reader::NetlistReader::parse(fp);
+        ir::reader::IRReader::parse(fp);
         fclose(fp);
     }
-    netlist::reader::NetlistReader::finalize();
+    ir::reader::IRReader::finalize();
 }
 
 int main(int argc, const char* argv[]) {
     printBanner();
     parseOption(argc, argv);
-    parseNetlist();
-    netlist::Netlist<netlist::NL_DEFAULT>& nl =
-            netlist::Netlist<netlist::NL_DEFAULT>::get();
+    parseIR();
+    ir::IRDBImpl<ir::IR_DEFAULT>& nl =
+            ir::IRDBImpl<ir::IR_DEFAULT>::get();
     if (util::OptionDB::getOption(kOptDumpPreElabNL).enabled()) {
         FILE* fp = fopen("pre-elab.nl", "w");
         nl.print(fp, true);
